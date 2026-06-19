@@ -2,7 +2,7 @@
 
 //koneksi ke database
 
-$conn = mysqli_connect("localhost","root","1301zz1301hh","biilling"); 
+$conn = mysqli_connect("localhost","root","","billingasa"); 
 
 
 $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
@@ -147,7 +147,7 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                 <a class="nav-link" href="tables.php
                 ">
                     <i class="fas fa-fw fa-table"></i>
-                    <span>Tables</span></a>
+                    <span>Datapelanggan Karya</span></a>
             </li>
 
             <!-- Divider -->

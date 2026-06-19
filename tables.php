@@ -2,7 +2,7 @@
 
 //koneksi ke database
 
-$conn = mysqli_connect("localhost","root","1301zz1301hh","biilling"); 
+$conn = mysqli_connect("localhost","root","","billingasa"); 
 
 
 $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
@@ -149,7 +149,7 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                 <a class="nav-link" href="tables.php
                 ">
                     <i class="fas fa-fw fa-table"></i>
-                    <span>Tables</span></a>
+                    <span>Datapelanggan Karya</span></a>
             </li>
 
             <!-- Divider -->
@@ -267,23 +267,31 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
-                                            <th>Name</th>
-                                            <th>Alamat</th>
-                                            <th>Office</th>
-                                            <th>Age</th>
-                                            <th>Start date</th>
-                                            <th>Salary</th>
+                                            <th>Nama</th>
+                                            <th>Nomor IP</th>
+                                            <th>Bayar</th>
+                                            <th>Modem</th>
+                                            <th>nomor Telepon</th>
+                                            <th>tanggal bayar</th>
+                                             <th>metode</th>
+                                            <th>catatan</th>
+                                             <!-- <th>Status Lunas</th> -->
+
                                         </tr>
                                     </thead>
                                     <!--mulai nya table pelanggan -->
                                          <?php while($row = mysqli_fetch_assoc($result)): ?>
                                        <tr>
                                             <td><?= $row["nama"]?></td>
-                                            <td><?= $row["alamat"]?></td>
-                                            <td>New York</td>
-                                            <td>27</td>
-                                            <td>2011/01/25</td>
-                                            <td>$112,000</td>
+                                            <td><?= $row["nomorip"]?></td>
+                                            <td><?= $row["bayar"]?></td>
+                                            <td><?= $row["modem"]?></td>
+                                            <td><?= $row["nomortelepon"]?></td>
+                                            <td><?= $row["tanggalbayar"]?></td>
+                                             <td><?= $row["metode"]?></td>
+                                            <td><?= $row["catatan"]?></td>
+                                                                                        <!-- <td>LUNAS</td> -->
+
                                         </tr>
                                                                         <?php endwhile;?> 
                                     <!-- akhir nya tabel pelanggan -->
