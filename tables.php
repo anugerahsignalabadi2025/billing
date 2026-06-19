@@ -1,3 +1,19 @@
+<?php
+
+//koneksi ke database
+
+$conn = mysqli_connect("localhost","root","1301zz1301hh","biilling"); 
+
+
+$result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
+
+
+//ambil table dari database
+// $datapelangganasa = mysqli_fetch_row($result);
+// var_dump($datapelangganasa)
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -252,22 +268,27 @@
                                     <thead>
                                         <tr>
                                             <th>Name</th>
-                                            <th>Position</th>
+                                            <th>Alamat</th>
                                             <th>Office</th>
                                             <th>Age</th>
                                             <th>Start date</th>
                                             <th>Salary</th>
                                         </tr>
                                     </thead>
-                                  
-                                        <tr>
-                                            <td>Donna Snider</td>
-                                            <td>Customer Support</td>
+                                    <!--mulai nya table pelanggan -->
+                                         <?php while($row = mysqli_fetch_assoc($result)): ?>
+                                       <tr>
+                                            <td><?= $row["nama"]?></td>
+                                            <td><?= $row["alamat"]?></td>
                                             <td>New York</td>
                                             <td>27</td>
                                             <td>2011/01/25</td>
                                             <td>$112,000</td>
                                         </tr>
+                                                                        <?php endwhile;?> 
+                                    <!-- akhir nya tabel pelanggan -->
+                                 
+
                                     </tbody>
                                 </table>
                             </div>
@@ -276,6 +297,8 @@
 
                 </div>
                 <!-- /.container-fluid -->
+                                 
+
 
             </div>
             <!-- End of Main Content -->

@@ -1,3 +1,19 @@
+<?php
+
+//koneksi ke database
+
+$conn = mysqli_connect("localhost","root","1301zz1301hh","biilling"); 
+
+
+$result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
+
+
+//ambil table dari database
+// $datapelangganasa = mysqli_fetch_row($result);
+// var_dump($datapelangganasa)
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -151,6 +167,30 @@
 
             <!-- Main Content -->
             <div id="content">
+
+
+
+            <!-- contoh konek database -->
+             <!-- <?php while($row = mysqli_fetch_assoc($result)): ?>
+
+<tr>
+
+
+<td>1</td>
+<td>
+<a href="">ubah</a>
+<a href="">hapus<a/>
+             <td>088888</td>
+             <td><?= $row["nama"]?></td>
+             <td>kareya</td>
+
+
+
+</td>
+
+</tr>
+                
+                                                                        <?php endwhile;?> -->
 
                 <!-- Topbar -->
                 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">

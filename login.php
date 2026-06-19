@@ -1,3 +1,18 @@
+<?php
+
+//koneksi ke database
+
+$conn = mysqli_connect("localhost","root","1301zz1301hh","biilling"); 
+
+
+$result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
+
+
+//ambil table dari database
+// $datapelangganasa = mysqli_fetch_row($result);
+// var_dump($datapelangganasa)
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 
