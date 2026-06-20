@@ -255,10 +255,12 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                 <!-- End of Topbar -->
 
                 <!-- Begin Page Content -->
+                 
                 <div class="container-fluid">
 
               
                     <!-- DataTales Example -->
+                     
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
                         </div>
@@ -276,9 +278,11 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                                              <th>metode</th>
                                             <th>catatan</th>
                                              <!-- <th>Status Lunas</th> -->
+                                                <!-- <th>aksi</th> -->
 
                                         </tr>
                                     </thead>
+                                    
                                     <!--mulai nya table pelanggan -->
                                          <?php while($row = mysqli_fetch_assoc($result)): ?>
                                        <tr>
@@ -290,7 +294,8 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                                             <td><?= $row["tanggalbayar"]?></td>
                                              <td><?= $row["metode"]?></td>
                                             <td><?= $row["catatan"]?></td>
-                                                                                        <!-- <td>LUNAS</td> -->
+                                            <!-- <td>LUNAS</td> -->
+                                            <!-- <td>ubah</td> -->
 
                                         </tr>
                                                                         <?php endwhile;?> 
@@ -298,7 +303,14 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                                  
 
                                     </tbody>
+                                     <a href="#" class="btn btn-primary btn-icon-split">
+                                        <span class="icon text-white-50">
+                                            <i class="fas fa-flag"></i>
+                                        </span>
+                                        <span class="text">Tambah Pelanggan</span>
+                                    </a>
                                 </table>
+                                
                             </div>
                         </div>
                     </div>
@@ -315,7 +327,7 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; Your Website 2020</span>
+                        <span>Copyright &copy; ASA 2026</span>
                     </div>
                 </div>
             </footer>
