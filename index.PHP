@@ -2,7 +2,7 @@
 
 //koneksi ke database
 
-$conn = mysqli_connect("localhost","root","1301zz1301hh","biilling"); 
+$conn = mysqli_connect("localhost","root","","billing_asa"); 
 
 
 $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
@@ -158,7 +158,27 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
 
             <!-- Sidebar Message -->
         
-
+ <li class="nav-item">
+    <!-- Tombol utama dropdown -->
+    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseKeuangan"
+        aria-expanded="true" aria-controls="collapseKeuangan">
+        <i class="fas fa-fw fa-table"></i>
+        <span>Keuangan</span>
+    </a>
+    
+    <!-- Isi menu dropdown -->
+    <div id="collapseKeuangan" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+        <div class="bg-white py-2 collapse-inner rounded">
+            <h6 class="collapse-header">Menu Keuangan:</h6>
+            <a class="collapse-item" href="omset.php">Omset</a>
+            <a class="collapse-item" href="pengeluaran_tetap.php">Pengeluaran Tetap</a>
+            <a class="collapse-item" href="pengeluaran_takterduga.php">Pengeluaran Takterduga</a>
+            <a class="collapse-item" href="penghasilan.php">Penghasilan</a>
+        </div>
+    </div>
+</li>
+            <!-- Divider -->
+            <hr class="sidebar-divider d-none d-md-block">
         </ul>
         <!-- End of Sidebar -->
 
@@ -247,7 +267,7 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">Kiki</span>
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">Admin</span>
                                 <img class="img-profile rounded-circle"
                                     src="img/undraw_profile.svg">
                             </a>

@@ -2,7 +2,7 @@
 
 //koneksi ke database
 
-$conn = mysqli_connect("localhost","root","1301zz1301hh","biilling"); 
+$conn = mysqli_connect("localhost","root","","billing_asa"); 
 
 
 $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
@@ -157,7 +157,25 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
 
             <!-- Sidebar Toggler (Sidebar) -->
   
-
+<li class="nav-item">
+    <!-- Tombol utama dropdown -->
+    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseKeuangan"
+        aria-expanded="true" aria-controls="collapseKeuangan">
+        <i class="fas fa-fw fa-table"></i>
+        <span>Keuangan</span>
+    </a>
+    
+    <!-- Isi menu dropdown -->
+    <div id="collapseKeuangan" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+        <div class="bg-white py-2 collapse-inner rounded">
+            <h6 class="collapse-header">Menu Keuangan:</h6>
+            <a class="collapse-item" href="omset.php">Omset</a>
+            <a class="collapse-item" href="pengeluaran_tetap.php">Pengeluaran Tetap</a>
+            <a class="collapse-item" href="pengeluaran_takterduga.php">Pengeluaran Takterduga</a>
+            <a class="collapse-item" href="penghasilan.php">Penghasilan</a>
+        </div>
+    </div>
+</li>
             <!-- Sidebar Message -->
         
 
@@ -267,12 +285,12 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
-                                            <th>Name</th>
-                                            <th>Alamat</th>
-                                            <th>Office</th>
-                                            <th>Age</th>
-                                            <th>Start date</th>
-                                            <th>Salary</th>
+                                            <th>ID</th>
+                                            <th>nama</th>
+                                            <th>nomor telepon</th>
+                                            <th>alamat</th>
+                                            <!-- <th></th>
+                                            <th>Salary</th> -->
                                         </tr>
                                     </thead>
                                     <!--mulai nya table pelanggan -->
