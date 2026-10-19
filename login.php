@@ -30,7 +30,7 @@
 
         .login-logo {
             max-width: 85%;    /* Mengatur lebar maksimum logo agar tidak kebesaran */
-            max-height: 280px;  /* Mengatur tinggi maksimum logo */
+            max-height: 280 px;  /* Mengatur tinggi maksimum logo */
             width: auto;
             height: auto;
             object-fit: contain;

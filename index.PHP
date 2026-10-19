@@ -147,7 +147,7 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                 <a class="nav-link" href="tables.php
                 ">
                     <i class="fas fa-fw fa-table"></i>
-                    <span>Tables</span></a>
+                    <span>Daftar Pelanggan</span></a>
             </li>
 
             <!-- Divider -->

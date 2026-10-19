@@ -49,8 +49,6 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
             <!-- Sidebar - Brand -->
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="index.php">
                 <div class="sidebar-brand-icon rotate-n-15">
-
-                    <!-- <i class="fas fa-laugh-wink"></i> -->
                 </div>
                 <div class="sidebar-brand-text mx-3">ASA <sup></sup></div>
             </a>
@@ -65,119 +63,35 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                     <span>Dashboard</span></a>
             </li>
 
-            <!-- Divider -->
-            <!-- <hr class="sidebar-divider"> -->
-
-            <!-- Heading -->
-            <!-- <div class="sidebar-heading">
-                Interface
-            </div> -->
-
-            <!-- Nav Item - Pages Collapse Menu -->
-            <!-- <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
-                    aria-expanded="true" aria-controls="collapseTwo">
-                    <i class="fas fa-fw fa-cog"></i>
-                    <span>Components</span>
-                </a>
-                <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <h6 class="collapse-header">Custom Components:</h6>
-                        <a class="collapse-item" href="buttons.html">Buttons</a>
-                        <a class="collapse-item" href="cards.html">Cards</a>
-                    </div>
-                </div>
-            </li> -->
-
-            <!-- Nav Item - Utilities Collapse Menu -->
-            <!-- <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseUtilities"
-                    aria-expanded="true" aria-controls="collapseUtilities">
-                    <i class="fas fa-fw fa-wrench"></i>
-                    <span>Utilities</span>
-                </a>
-                <div id="collapseUtilities" class="collapse" aria-labelledby="headingUtilities"
-                    data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <h6 class="collapse-header">Custom Utilities:</h6>
-                        <a class="collapse-item" href="utilities-color.html">Colors</a>
-                        <a class="collapse-item" href="utilities-border.html">Borders</a>
-                        <a class="collapse-item" href="utilities-animation.html">Animations</a>
-                        <a class="collapse-item" href="utilities-other.html">Other</a>
-                    </div>
-                </div>
-            </li> -->
-
-            <!-- Divider -->
-            <!-- <hr class="sidebar-divider"> -->
-
-            <!-- Heading -->
-            <!-- <div class="sidebar-heading">
-                Addons
-            </div> -->
-
-            <!-- Nav Item - Pages Collapse Menu -->
-            <!-- <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePages"
-                    aria-expanded="true" aria-controls="collapsePages">
-                    <i class="fas fa-fw fa-folder"></i>
-                    <span>Pages</span>
-                </a>
-                <div id="collapsePages" class="collapse" aria-labelledby="headingPages" data-parent="#accordionSidebar">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <h6 class="collapse-header">Login Screens:</h6>
-                        <a class="collapse-item" href="login.php">Login</a>
-                        <a class="collapse-item" href="register.html">Register</a>
-                        <a class="collapse-item" href="forgot-password.html">Forgot Password</a>
-                        <div class="collapse-divider"></div>
-                        <h6 class="collapse-header">Other Pages:</h6>
-                        <a class="collapse-item" href="404.html">404 Page</a>
-                        <a class="collapse-item" href="blank.html">Blank Page</a>
-                    </div>
-                </div>
-            </li> -->
-
-            <!-- Nav Item - Charts -->
-            <!-- <li class="nav-item">
-                <a class="nav-link" href="charts.html">
-                    <i class="fas fa-fw fa-chart-area"></i>
-                    <span>Charts</span></a>
-            </li> -->
-
             <!-- Nav Item - Tables -->
             <li class="nav-item">
-                <a class="nav-link" href="tables.php
-                ">
+                <a class="nav-link" href="tables.php">
                     <i class="fas fa-fw fa-table"></i>
-                    <span>Tables</span></a>
+                    <span>Daftar Pelanggan</span></a>
             </li>
 
             <!-- Divider -->
             <hr class="sidebar-divider d-none d-md-block">
-
-            <!-- Sidebar Toggler (Sidebar) -->
   
-<li class="nav-item">
-    <!-- Tombol utama dropdown -->
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseKeuangan"
-        aria-expanded="true" aria-controls="collapseKeuangan">
-        <i class="fas fa-fw fa-table"></i>
-        <span>Keuangan</span>
-    </a>
-    
-    <!-- Isi menu dropdown -->
-    <div id="collapseKeuangan" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <h6 class="collapse-header">Menu Keuangan:</h6>
-            <a class="collapse-item" href="omset.php">Omset</a>
-            <a class="collapse-item" href="pengeluaran_tetap.php">Pengeluaran Tetap</a>
-            <a class="collapse-item" href="pengeluaran_takterduga.php">Pengeluaran Takterduga</a>
-            <a class="collapse-item" href="penghasilan.php">Penghasilan</a>
-        </div>
-    </div>
-</li>
-            <!-- Sidebar Message -->
-        
+            <li class="nav-item">
+                <!-- Tombol utama dropdown -->
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseKeuangan"
+                    aria-expanded="true" aria-controls="collapseKeuangan">
+                    <i class="fas fa-fw fa-table"></i>
+                    <span>Keuangan</span>
+                </a>
+                
+                <!-- Isi menu dropdown -->
+                <div id="collapseKeuangan" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Menu Keuangan:</h6>
+                        <a class="collapse-item" href="omset.php">Omset</a>
+                        <a class="collapse-item" href="pengeluaran_tetap.php">Pengeluaran Tetap</a>
+                        <a class="collapse-item" href="pengeluaran_takterduga.php">Pengeluaran Takterduga</a>
+                        <a class="collapse-item" href="penghasilan.php">Penghasilan</a>
+                    </div>
+                </div>
+            </li>
 
         </ul>
         <!-- End of Sidebar -->
@@ -190,7 +104,6 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
 
                 <!-- Topbar -->
                 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-
                     <!-- Sidebar Toggle (Topbar) -->
                     <form class="form-inline">
                         <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
@@ -198,67 +111,17 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                         </button>
                     </form>
 
-                    <!-- Topbar Search -->
-                    <!-- <form
-                        class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
-                        <div class="input-group">
-                            <input type="text" class="form-control bg-light border-0 small" placeholder="Search for..."
-                                aria-label="Search" aria-describedby="basic-addon2">
-                            <div class="input-group-append">
-                                <button class="btn btn-primary" type="button">
-                                    <i class="fas fa-search fa-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </form> -->
-
                     <!-- Topbar Navbar -->
                     <ul class="navbar-nav ml-auto">
-
-                        <!-- Nav Item - Search Dropdown (Visible Only XS) -->
-                        <li class="nav-item dropdown no-arrow d-sm-none">
-                            <a class="nav-link dropdown-toggle" href="#" id="searchDropdown" role="button"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <i class="fas fa-search fa-fw"></i>
-                            </a>
-                            <!-- Dropdown - Messages -->
-                            <div class="dropdown-menu dropdown-menu-right p-3 shadow animated--grow-in"
-                                aria-labelledby="searchDropdown">
-                                <form class="form-inline mr-auto w-100 navbar-search">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control bg-light border-0 small"
-                                            placeholder="Search for..." aria-label="Search"
-                                            aria-describedby="basic-addon2">
-                                        <div class="input-group-append">
-                                            <button class="btn btn-primary" type="button">
-                                                <i class="fas fa-search fa-sm"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </li>
-
-                      
-                            
-
-                     
-                             
-
-                        <!-- Nav Item - User Information -->
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">Kiki</span>
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">admin</span>
                                 <img class="img-profile rounded-circle"
                                     src="img/undraw_profile.svg">
                             </a>
-                            <!-- Dropdown - User Information -->
                             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
                                 aria-labelledby="userDropdown">
-                               
-                              
-                               
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
                                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
@@ -266,19 +129,21 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                                 </a>
                             </div>
                         </li>
-
                     </ul>
-
                 </nav>
                 <!-- End of Topbar -->
 
                 <!-- Begin Page Content -->
                 <div class="container-fluid">
 
-              
                     <!-- DataTales Example -->
                     <div class="card shadow mb-4">
-                        <div class="card-header py-3">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 font-weight-bold text-primary">Tabel Daftar Pelanggan</h6>
+                            <!-- TOMBOL TAMBAH DATA (CREATE) -->
+                            <a href="tambah.php" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> Tambah Pelanggan
+                            </a>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -286,27 +151,32 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
                                     <thead>
                                         <tr>
                                             <th>ID</th>
-                                            <th>nama</th>
-                                            <th>nomor telepon</th>
-                                            <th>alamat</th>
-                                            <!-- <th></th>
-                                            <th>Salary</th> -->
+                                            <th>Nama</th>
+                                            <th>Nomor Telepon</th>
+                                            <th>Alamat</th>
+                                            <!-- <th>Aksi</th> Kolom untuk Tombol Edit & Hapus -->
                                         </tr>
                                     </thead>
-                                    <!--mulai nya table pelanggan -->
-                                         <?php while($row = mysqli_fetch_assoc($result)): ?>
-                                       <tr>
-                                            <td><?= $row["nama"]?></td>
-                                            <td><?= $row["alamat"]?></td>
-                                            <td>New York</td>
-                                            <td>27</td>
-                                            <td>2011/01/25</td>
-                                            <td>$112,000</td>
+                                    <tbody>
+                                        <!--mulai nya table pelanggan -->
+                                        <?php while($row = mysqli_fetch_assoc($result)): ?>
+                                        <tr>
+                                            <td><?= $row["id"]; ?></td>
+                                            <td><?= $row["nama"]; ?></td>
+                                            <td><?= $row["notlp"]; ?></td>
+                                            <td><?= $row["alamat"]; ?></td>
+                                            <td>
+                                                <!-- TOMBOL EDIT & HAPUS (UPDATE & DELETE) -->
+                                                <a href="ubah.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                <a href="hapus.php?id=<?= $row["id"]; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data ini?');">
+                                                    <i class="fas fa-trash"></i> Hapus
+                                                </a>
+                                            </td>
                                         </tr>
-                                                                        <?php endwhile;?> 
-                                    <!-- akhir nya tabel pelanggan -->
-                                 
-
+                                        <?php endwhile; ?> 
+                                        <!-- akhir nya tabel pelanggan -->
                                     </tbody>
                                 </table>
                             </div>
@@ -315,8 +185,6 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
 
                 </div>
                 <!-- /.container-fluid -->
-                                 
-
 
             </div>
             <!-- End of Main Content -->
@@ -325,7 +193,7 @@ $result = mysqli_query($conn,"SELECT * FROM datapelangganasa" );
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; Your Website 2020</span>
+                        <span>Copyright &copy; Anugerah Signal Abadi 2026</span>
                     </div>
                 </div>
             </footer>
