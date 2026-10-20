@@ -80,7 +80,6 @@ function modules() {
   return merge(bootstrapJS, bootstrapSCSS, chartJS, dataTables, fontAwesome, jquery, jqueryEasing);
 }
 
-// CSS task
 function css() {
   return gulp
     .src("./scss/**/*.scss")
@@ -105,7 +104,7 @@ function css() {
     .pipe(browsersync.stream());
 }
 
-// JS task
+
 function js() {
   return gulp
     .src([

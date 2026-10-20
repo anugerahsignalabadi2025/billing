@@ -1,5 +1,5 @@
 <?php
-$conn = mysqli_connect("localhost", "root", "", "billing_asa");
+$conn = mysqli_connect("localhost", "root", "", "billing_asa"); 
 
 if (!$conn) {
     die("Koneksi database gagal: " . mysqli_connect_error());
@@ -11,15 +11,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $nama = trim($_POST["nama"] ?? "");
     $notlp = trim($_POST["notlp"] ?? "");
     $alamat = trim($_POST["alamat"] ?? "");
+    $paket = trim($_POST["paket"] ?? "");
 
-    if ($nama === "" || $notlp === "" || $alamat === "") {
+    if ($nama === "" || $notlp === "" || $alamat === "" || $paket === "") {
         $message = "Semua field harus diisi.";
     } else {
-        $query = "INSERT INTO datapelangganasa (nama, notlp, alamat) VALUES (?, ?, ?)";
+        $query = "INSERT INTO datapelangganasa (nama, notlp, alamat, paket) VALUES (?, ?, ?, ?)";
         $stmt = mysqli_prepare($conn, $query);
 
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "sss", $nama, $notlp, $alamat);
+            mysqli_stmt_bind_param($stmt, "ssss", $nama, $notlp, $alamat, $paket);
 
             if (mysqli_stmt_execute($stmt)) {
                 header("Location: tables.php");
@@ -117,6 +118,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                     <textarea class="form-control" id="alamat" name="alamat" rows="4" placeholder="Masukkan alamat" required></textarea>
                                 </div>
 
+                                <div class="form-group">
+                                    <label for="paket">Paket</label>
+                                    <input type="text" class="form-control" id="paket" name="paket" placeholder="Masukkan jenis paket" required>
+                                </div>
+
                                 <button type="submit" class="btn btn-primary">Simpan</button>
                                 <a href="tables.php" class="btn btn-secondary">Kembali</a>
                             </form>
@@ -141,4 +147,4 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <script src="js/sb-admin-2.min.js"></script>
 </body>
 
-</html>
+</html> 
