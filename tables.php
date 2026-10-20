@@ -71,6 +71,18 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                     </div>
                 </div>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="odp.php">
+                    <i class="fas fa-fw fa-sitemap"></i>
+                    <span>ODP</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="acs.php">
+                    <i class="fas fa-fw fa-server"></i>
+                    <span>ACS</span>
+                </a>
+            </li>
 
         </ul>
 

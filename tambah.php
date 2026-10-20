@@ -77,6 +77,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <span>Daftar Pelanggan</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="odp.php">
+                    <i class="fas fa-fw fa-sitemap"></i>
+                    <span>ODP</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="acs.php">
+                    <i class="fas fa-fw fa-server"></i>
+                    <span>ACS</span>
+                </a>
+            </li>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">

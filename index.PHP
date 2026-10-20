@@ -1,4 +1,4 @@
-<?php
+<!-- <?php
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
 $query_pelanggan = mysqli_query($conn, "SELECT COUNT(*) as total FROM datapelangganasa");
@@ -22,7 +22,7 @@ $total_seluruh_pengeluaran = $total_pengeluaran_tetap + $total_pengeluaran_takte
 $query_penghasilan = mysqli_query($conn, "SELECT SUM(omset_kotor - total_pengeluaran) as total FROM penghasilan");
 $data_penghasilan = mysqli_fetch_assoc($query_penghasilan);
 $total_bersih = $data_penghasilan['total'] ?? ($total_omset - $total_seluruh_pengeluaran);
-?>
+?> -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -73,6 +73,18 @@ $total_bersih = $data_penghasilan['total'] ?? ($total_omset - $total_seluruh_pen
                         <a class="collapse-item" href="penghasilan.php">Penghasilan</a>
                     </div>
                 </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="odp.php">
+                    <i class="fas fa-fw fa-sitemap"></i>
+                    <span>ODP</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="acs.php">
+                    <i class="fas fa-fw fa-server"></i>
+                    <span>ACS</span>
+                </a>
             </li>
             <hr class="sidebar-divider d-none d-md-block">
         </ul>
