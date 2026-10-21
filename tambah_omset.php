@@ -4,17 +4,20 @@ require_once __DIR__ . '/auth.php';
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
 if (isset($_POST["submit"])) {
-    $nama = htmlspecialchars($_POST["nama"]);
-    $notlp = htmlspecialchars($_POST["notlp"]);
-    $alamat = htmlspecialchars($_POST["alamat"]);
-    $paket = htmlspecialchars($_POST["paket"]);
-    $nominal = htmlspecialchars($_POST["nominal"]);
-    $tanggal = htmlspecialchars($_POST["tanggal"]);
+    $nama = trim($_POST["nama"] ?? "");
+    $notlp = trim($_POST["notlp"] ?? "");
+    $alamat = trim($_POST["alamat"] ?? "");
+    $paket = trim($_POST["paket"] ?? "");
+    $nominal = trim($_POST["nominal"] ?? "");
+    $tanggal = trim($_POST["tanggal"] ?? "");
 
-    $query = "INSERT INTO omset (nama, notlp, alamat, paket, nominal, tanggal) VALUES ('$nama', '$notlp', '$alamat', '$paket', '$nominal', '$tanggal')";
-    mysqli_query($conn, $query);
+    $stmt = mysqli_prepare($conn, "INSERT INTO omset (nama, notlp, alamat, paket, nominal, tanggal) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))");
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "ssssss", $nama, $notlp, $alamat, $paket, $nominal, $tanggal);
+    }
 
-    if (mysqli_affected_rows($conn) > 0) {
+    if ($stmt && mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_close($stmt);
         echo "
             <script>
                 alert('Data omset berhasil ditambahkan!');
@@ -22,9 +25,13 @@ if (isset($_POST["submit"])) {
             </script>
         ";
     } else {
+        $error = $stmt ? mysqli_stmt_error($stmt) : mysqli_error($conn);
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
         echo "
             <script>
-                alert('Data omset gagal ditambahkan!');
+                alert(" . json_encode('Data omset gagal ditambahkan: ' . $error) . ");
                 document.location.href = 'omset.php';
             </script>
         ";
@@ -92,6 +99,12 @@ if (isset($_POST["submit"])) {
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">
@@ -119,27 +132,27 @@ if (isset($_POST["submit"])) {
                             <form action="" method="post">
                                 <div class="form-group">
                                     <label for="nama">Nama</label>
-                                    <input type="text" class="form-control" name="nama" id="nama" required>
+                                    <input type="text" class="form-control" name="nama" id="nama">
                                 </div>
                                 <div class="form-group">
                                     <label for="notlp">No. Telepon</label>
-                                    <input type="text" class="form-control" name="notlp" id="notlp" required>
+                                    <input type="text" class="form-control" name="notlp" id="notlp">
                                 </div>
                                 <div class="form-group">
                                     <label for="alamat">Alamat</label>
-                                    <textarea class="form-control" name="alamat" id="alamat" rows="3" required></textarea>
+                                    <textarea class="form-control" name="alamat" id="alamat" rows="3"></textarea>
                                 </div>
                                 <div class="form-group">
                                     <label for="paket">Paket</label>
-                                    <input type="text" class="form-control" name="paket" id="paket" required>
+                                    <input type="text" class="form-control" name="paket" id="paket">
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>
-                                    <input type="number" class="form-control" name="nominal" id="nominal" required>
+                                    <input type="number" class="form-control" name="nominal" id="nominal">
                                 </div>
                                 <div class="form-group">
                                     <label for="tanggal">Tanggal</label>
-                                    <input type="date" class="form-control" name="tanggal" id="tanggal" required>
+                                    <input type="date" class="form-control" name="tanggal" id="tanggal">
                                 </div>
                                 <button type="submit" name="submit" class="btn btn-primary">Simpan</button>
                                 <a href="omset.php" class="btn btn-secondary">Batal</a>

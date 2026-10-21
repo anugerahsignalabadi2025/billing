@@ -36,31 +36,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $paket = trim($_POST["paket"] ?? "");
     $tanggal_pemasangan = trim($_POST["tanggal_pemasangan"] ?? "");
 
-    if ($nama === "" || $notlp === "" || $alamat === "" || $paket === "") {
-        $message = "Semua field harus diisi.";
-    } else {
-        $query = "UPDATE datapelangganasa SET nama = ?, notlp = ?, alamat = ?, paket = ?, tanggal_pemasangan = NULLIF(?, '') WHERE id = ?";
-        $stmt = mysqli_prepare($conn, $query);
+    $query = "UPDATE datapelangganasa SET nama = NULLIF(?, ''), notlp = NULLIF(?, ''), alamat = NULLIF(?, ''), paket = NULLIF(?, ''), tanggal_pemasangan = NULLIF(?, '') WHERE id = ?";
+    $stmt = mysqli_prepare($conn, $query);
 
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "sssssi", $nama, $notlp, $alamat, $paket, $tanggal_pemasangan, $id);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "sssssi", $nama, $notlp, $alamat, $paket, $tanggal_pemasangan, $id);
 
-            if (mysqli_stmt_execute($stmt)) {
-                echo "
+        if (mysqli_stmt_execute($stmt)) {
+            echo "
                     <script>
                         alert('Data pelanggan berhasil diperbarui!');
                         document.location.href = 'tables.php';
                     </script>
                 ";
-                exit;
-            } else {
-                $message = "Data gagal diperbarui: " . mysqli_error($conn);
-            }
-
-            mysqli_stmt_close($stmt);
+            exit;
         } else {
-            $message = "Query gagal dipersiapkan: " . mysqli_error($conn);
+            $message = "Data gagal diperbarui: " . mysqli_stmt_error($stmt);
         }
+
+        mysqli_stmt_close($stmt);
+    } else {
+        $message = "Query gagal dipersiapkan: " . mysqli_error($conn);
     }
 }
 ?>
@@ -117,6 +113,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">
@@ -145,22 +147,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <form method="POST" action="">
                                 <div class="form-group">
                                     <label for="nama">Nama</label>
-                                    <input type="text" class="form-control" id="nama" name="nama" value="<?php echo htmlspecialchars($data['nama']); ?>" required>
+                                    <input type="text" class="form-control" id="nama" name="nama" value="<?php echo htmlspecialchars($data['nama'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="notlp">Nomor Telepon</label>
-                                    <input type="text" class="form-control" id="notlp" name="notlp" value="<?php echo htmlspecialchars($data['notlp']); ?>" required>
+                                    <input type="text" class="form-control" id="notlp" name="notlp" value="<?php echo htmlspecialchars((string) ($data['notlp'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="alamat">Alamat</label>
-                                    <textarea class="form-control" id="alamat" name="alamat" rows="4" required><?php echo htmlspecialchars($data['alamat']); ?></textarea>
+                                    <textarea class="form-control" id="alamat" name="alamat" rows="4"><?php echo htmlspecialchars($data['alamat'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="paket">Paket</label>
-                                    <input type="text" class="form-control" id="paket" name="paket" value="<?php echo htmlspecialchars($data['paket']); ?>" required>
+                                    <input type="text" class="form-control" id="paket" name="paket" value="<?php echo htmlspecialchars($data['paket'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
 
                                 <div class="form-group">

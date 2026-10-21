@@ -9,7 +9,8 @@ if (!$conn) {
 
 $queries = [
     'total_pelanggan' => 'SELECT COUNT(*) AS total FROM datapelangganasa',
-    'total_omset' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM omset',
+    'total_tagihan' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM omset',
+    'total_omset' => 'SELECT COALESCE(SUM(dibayar), 0) AS total FROM omset',
     'total_pengeluaran_tetap' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM pengeluaran_tetap',
     'total_pengeluaran_takterduga' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM pengeluaran_takterduga',
 ];
@@ -28,6 +29,7 @@ foreach ($queries as $key => $query) {
 
 $total_pengeluaran = $totals['total_pengeluaran_tetap'] + $totals['total_pengeluaran_takterduga'];
 $total_bersih = $totals['total_omset'] - $total_pengeluaran;
+$sisa_tagihan = $totals['total_tagihan'] - $totals['total_omset'];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -90,6 +92,12 @@ $total_bersih = $totals['total_omset'] - $total_pengeluaran;
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">
@@ -132,6 +140,14 @@ $total_bersih = $totals['total_omset'] - $total_pengeluaran;
                                 <div class="card-body">
                                     <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Pengeluaran</div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">Rp <?= number_format($total_pengeluaran, 0, ',', '.'); ?></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-warning shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Sisa Tagihan</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">Rp <?= number_format($sisa_tagihan, 0, ',', '.'); ?></div>
                                 </div>
                             </div>
                         </div>

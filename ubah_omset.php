@@ -9,25 +9,21 @@ $result = mysqli_query($conn, "SELECT * FROM omset WHERE id = $id");
 $data = mysqli_fetch_assoc($result);
 
 if (isset($_POST["submit"])) {
-    $nama = htmlspecialchars($_POST["nama"]);
-    $notlp = htmlspecialchars($_POST["notlp"]);
-    $alamat = htmlspecialchars($_POST["alamat"]);
-    $paket = htmlspecialchars($_POST["paket"]);
-    $nominal = htmlspecialchars($_POST["nominal"]);
-    $tanggal = htmlspecialchars($_POST["tanggal"]);
+    $nama = trim($_POST["nama"] ?? "");
+    $notlp = trim($_POST["notlp"] ?? "");
+    $alamat = trim($_POST["alamat"] ?? "");
+    $paket = trim($_POST["paket"] ?? "");
+    $nominal = trim($_POST["nominal"] ?? "");
+    $tanggal = trim($_POST["tanggal"] ?? "");
 
-    $query = "UPDATE omset SET 
-                nama = '$nama',
-                notlp = '$notlp',
-                alamat = '$alamat',
-                paket = '$paket',
-                nominal = '$nominal',
-                tanggal = '$tanggal'
-              WHERE id = $id";
+    $query = "UPDATE omset SET nama = NULLIF(?, ''), notlp = NULLIF(?, ''), alamat = NULLIF(?, ''), paket = NULLIF(?, ''), nominal = NULLIF(?, ''), tanggal = NULLIF(?, ''), dibayar = LEAST(dibayar, COALESCE(NULLIF(?, ''), 0)) WHERE id = ?";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "sssssssi", $nama, $notlp, $alamat, $paket, $nominal, $tanggal, $nominal, $id);
+    }
 
-    mysqli_query($conn, $query);
-
-    if (mysqli_affected_rows($conn) >= 0) {
+    if ($stmt && mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_close($stmt);
         echo "
             <script>
                 alert('Data omset berhasil diperbarui!');
@@ -35,9 +31,13 @@ if (isset($_POST["submit"])) {
             </script>
         ";
     } else {
+        $error = $stmt ? mysqli_stmt_error($stmt) : mysqli_error($conn);
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
         echo "
             <script>
-                alert('Data omset gagal diperbarui!');
+                alert(" . json_encode('Data omset gagal diperbarui: ' . $error) . ");
                 document.location.href = 'omset.php';
             </script>
         ";
@@ -105,6 +105,12 @@ if (isset($_POST["submit"])) {
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">
@@ -132,27 +138,27 @@ if (isset($_POST["submit"])) {
                             <form action="" method="post">
                                 <div class="form-group">
                                     <label for="nama">Nama</label>
-                                    <input type="text" class="form-control" name="nama" id="nama" value="<?= $data['nama']; ?>" required>
+                                    <input type="text" class="form-control" name="nama" id="nama" value="<?= htmlspecialchars($data['nama'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="notlp">No. Telepon</label>
-                                    <input type="text" class="form-control" name="notlp" id="notlp" value="<?= $data['notlp']; ?>" required>
+                                    <input type="text" class="form-control" name="notlp" id="notlp" value="<?= htmlspecialchars($data['notlp'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="alamat">Alamat</label>
-                                    <textarea class="form-control" name="alamat" id="alamat" rows="3" required><?= $data['alamat']; ?></textarea>
+                                    <textarea class="form-control" name="alamat" id="alamat" rows="3"><?= htmlspecialchars($data['alamat'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                                 </div>
                                 <div class="form-group">
                                     <label for="paket">Paket</label>
-                                    <input type="text" class="form-control" name="paket" id="paket" value="<?= $data['paket']; ?>" required>
+                                    <input type="text" class="form-control" name="paket" id="paket" value="<?= htmlspecialchars($data['paket'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>
-                                    <input type="number" class="form-control" name="nominal" id="nominal" value="<?= $data['nominal']; ?>" required>
+                                    <input type="number" class="form-control" name="nominal" id="nominal" value="<?= htmlspecialchars((string) ($data['nominal'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="tanggal">Tanggal</label>
-                                    <input type="date" class="form-control" name="tanggal" id="tanggal" value="<?= $data['tanggal']; ?>" required>
+                                    <input type="date" class="form-control" name="tanggal" id="tanggal" value="<?= htmlspecialchars($data['tanggal'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <button type="submit" name="submit" class="btn btn-primary">Update</button>
                                 <a href="omset.php" class="btn btn-secondary">Batal</a>

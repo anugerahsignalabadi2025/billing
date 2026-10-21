@@ -16,26 +16,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $paket = trim($_POST["paket"] ?? "");
     $tanggal_pemasangan = trim($_POST["tanggal_pemasangan"] ?? "");
 
-    if ($nama === "" || $notlp === "" || $alamat === "" || $paket === "" || $tanggal_pemasangan === "") {
-        $message = "Semua field harus diisi.";
-    } else {
-        $query = "INSERT INTO datapelangganasa (nama, notlp, alamat, paket, tanggal_pemasangan) VALUES (?, ?, ?, ?, ?)";
-        $stmt = mysqli_prepare($conn, $query);
+    $query = "INSERT INTO datapelangganasa (nama, notlp, alamat, paket, tanggal_pemasangan) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))";
+    $stmt = mysqli_prepare($conn, $query);
 
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "sssss", $nama, $notlp, $alamat, $paket, $tanggal_pemasangan);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "sssss", $nama, $notlp, $alamat, $paket, $tanggal_pemasangan);
 
-            if (mysqli_stmt_execute($stmt)) {
-                header("Location: tables.php");
-                exit;
-            } else {
-                $message = "Data gagal ditambahkan: " . mysqli_error($conn);
-            }
-
-            mysqli_stmt_close($stmt);
+        if (mysqli_stmt_execute($stmt)) {
+            header("Location: tables.php");
+            exit;
         } else {
-            $message = "Query gagal dipersiapkan: " . mysqli_error($conn);
+            $message = "Data gagal ditambahkan: " . mysqli_stmt_error($stmt);
         }
+
+        mysqli_stmt_close($stmt);
+    } else {
+        $message = "Query gagal dipersiapkan: " . mysqli_error($conn);
     }
 }
 ?>
@@ -92,6 +88,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">
@@ -120,27 +122,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <form method="POST" action="">
                                 <div class="form-group">
                                     <label for="nama">Nama</label>
-                                    <input type="text" class="form-control" id="nama" name="nama" placeholder="Masukkan nama pelanggan" required>
+                                    <input type="text" class="form-control" id="nama" name="nama" placeholder="Masukkan nama pelanggan (opsional)">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="notlp">Nomor Telepon</label>
-                                    <input type="text" class="form-control" id="notlp" name="notlp" placeholder="Masukkan nomor telepon" required>
+                                    <input type="text" class="form-control" id="notlp" name="notlp" placeholder="Masukkan nomor telepon (opsional)">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="alamat">Alamat</label>
-                                    <textarea class="form-control" id="alamat" name="alamat" rows="4" placeholder="Masukkan alamat" required></textarea>
+                                    <textarea class="form-control" id="alamat" name="alamat" rows="4" placeholder="Masukkan alamat (opsional)"></textarea>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="paket">Paket</label>
-                                    <input type="text" class="form-control" id="paket" name="paket" placeholder="Masukkan jenis paket" required>
+                                    <input type="text" class="form-control" id="paket" name="paket" placeholder="Masukkan jenis paket (opsional)">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="tanggal_pemasangan">Tanggal Pemasangan</label>
-                                    <input type="date" class="form-control" id="tanggal_pemasangan" name="tanggal_pemasangan" required>
+                                    <input type="date" class="form-control" id="tanggal_pemasangan" name="tanggal_pemasangan">
                                 </div>
 
                                 <button type="submit" class="btn btn-primary">Simpan</button>

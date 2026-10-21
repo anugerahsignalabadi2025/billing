@@ -59,6 +59,12 @@
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
         </ul>
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">

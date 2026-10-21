@@ -5,6 +5,19 @@ $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
 $id = $_GET["id"];
 
+$invoice = mysqli_query($conn, "SELECT customer_id FROM omset WHERE id = $id");
+$invoiceData = mysqli_fetch_assoc($invoice);
+
+if ($invoiceData && $invoiceData['customer_id'] !== null) {
+    echo "
+        <script>
+            alert('Tagihan bulanan otomatis tidak dapat dihapus agar tidak dibuat ulang. Silakan ubah status atau nominal pembayarannya.');
+            document.location.href = 'omset.php';
+        </script>
+    ";
+    exit;
+}
+
 $query = "DELETE FROM omset WHERE id = $id";
 mysqli_query($conn, $query);
 

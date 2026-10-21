@@ -85,6 +85,12 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
 
         </ul>
 
@@ -153,10 +159,10 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                                         <?php while($row = mysqli_fetch_assoc($result)): ?>
                                         <tr>
                                             <td><?= $row["id"]; ?></td>
-                                            <td><?= $row["nama"]; ?></td>
-                                            <td><?= $row["notlp"]; ?></td>
-                                            <td><?= $row["alamat"]; ?></td>
-                                            <td><?= $row["paket"]; ?></td>
+                                            <td><?= htmlspecialchars($row["nama"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= htmlspecialchars((string) ($row["notlp"] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= htmlspecialchars($row["alamat"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= htmlspecialchars($row["paket"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= htmlspecialchars($row["tanggal_pemasangan"] ?? "-", ENT_QUOTES, "UTF-8"); ?></td>
                                             <td>
                                                 <a href="ubah.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">

@@ -9,21 +9,18 @@ $result = mysqli_query($conn, "SELECT * FROM pengeluaran_tetap WHERE id = $id");
 $data = mysqli_fetch_assoc($result);
 
 if (isset($_POST["submit"])) {
-    $nama_pengeluaran = htmlspecialchars($_POST["nama_pengeluaran"]);
-    $keterangan = htmlspecialchars($_POST["keterangan"]);
-    $nominal = htmlspecialchars($_POST["nominal"]);
-    $tanggal = htmlspecialchars($_POST["tanggal"]);
+    $nama_pengeluaran = trim($_POST["nama_pengeluaran"] ?? "");
+    $keterangan = trim($_POST["keterangan"] ?? "");
+    $nominal = trim($_POST["nominal"] ?? "");
+    $tanggal = trim($_POST["tanggal"] ?? "");
 
-    $query = "UPDATE pengeluaran_tetap SET 
-                nama_pengeluaran = '$nama_pengeluaran',
-                keterangan = '$keterangan',
-                nominal = '$nominal',
-                tanggal = '$tanggal'
-              WHERE id = $id";
+    $stmt = mysqli_prepare($conn, "UPDATE pengeluaran_tetap SET nama_pengeluaran = NULLIF(?, ''), keterangan = NULLIF(?, ''), nominal = NULLIF(?, ''), tanggal = NULLIF(?, '') WHERE id = ?");
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "ssssi", $nama_pengeluaran, $keterangan, $nominal, $tanggal, $id);
+    }
 
-    mysqli_query($conn, $query);
-
-    if (mysqli_affected_rows($conn) >= 0) {
+    if ($stmt && mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_close($stmt);
         echo "
             <script>
                 alert('Data pengeluaran tetap berhasil diperbarui!');
@@ -31,9 +28,13 @@ if (isset($_POST["submit"])) {
             </script>
         ";
     } else {
+        $error = $stmt ? mysqli_stmt_error($stmt) : mysqli_error($conn);
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
         echo "
             <script>
-                alert('Data pengeluaran tetap gagal diperbarui!');
+                alert(" . json_encode('Data pengeluaran tetap gagal diperbarui: ' . $error) . ");
                 document.location.href = 'pengeluaran_tetap.php';
             </script>
         ";
@@ -101,6 +102,12 @@ if (isset($_POST["submit"])) {
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">
@@ -128,19 +135,19 @@ if (isset($_POST["submit"])) {
                             <form action="" method="post">
                                 <div class="form-group">
                                     <label for="nama_pengeluaran">Nama Pengeluaran</label>
-                                    <input type="text" class="form-control" name="nama_pengeluaran" id="nama_pengeluaran" value="<?= $data['nama_pengeluaran']; ?>" required>
+                                    <input type="text" class="form-control" name="nama_pengeluaran" id="nama_pengeluaran" value="<?= htmlspecialchars($data['nama_pengeluaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="keterangan">Keterangan</label>
-                                    <textarea class="form-control" name="keterangan" id="keterangan" rows="3" required><?= $data['keterangan']; ?></textarea>
+                                    <textarea class="form-control" name="keterangan" id="keterangan" rows="3"><?= htmlspecialchars($data['keterangan'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>
-                                    <input type="number" class="form-control" name="nominal" id="nominal" value="<?= $data['nominal']; ?>" required>
+                                    <input type="number" class="form-control" name="nominal" id="nominal" value="<?= htmlspecialchars((string) ($data['nominal'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="tanggal">Tanggal</label>
-                                    <input type="date" class="form-control" name="tanggal" id="tanggal" value="<?= $data['tanggal']; ?>" required>
+                                    <input type="date" class="form-control" name="tanggal" id="tanggal" value="<?= htmlspecialchars($data['tanggal'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <button type="submit" name="submit" class="btn btn-primary">Update</button>
                                 <a href="pengeluaran_tetap.php" class="btn btn-secondary">Batal</a>

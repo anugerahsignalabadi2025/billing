@@ -4,15 +4,18 @@ require_once __DIR__ . '/auth.php';
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
 if (isset($_POST["submit"])) {
-    $nama_pengeluaran = htmlspecialchars($_POST["nama_pengeluaran"]);
-    $keterangan = htmlspecialchars($_POST["keterangan"]);
-    $nominal = htmlspecialchars($_POST["nominal"]);
-    $tanggal = htmlspecialchars($_POST["tanggal"]);
+    $nama_pengeluaran = trim($_POST["nama_pengeluaran"] ?? "");
+    $keterangan = trim($_POST["keterangan"] ?? "");
+    $nominal = trim($_POST["nominal"] ?? "");
+    $tanggal = trim($_POST["tanggal"] ?? "");
 
-    $query = "INSERT INTO pengeluaran_tetap (nama_pengeluaran, keterangan, nominal, tanggal) VALUES ('$nama_pengeluaran', '$keterangan', '$nominal', '$tanggal')";
-    mysqli_query($conn, $query);
+    $stmt = mysqli_prepare($conn, "INSERT INTO pengeluaran_tetap (nama_pengeluaran, keterangan, nominal, tanggal) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))");
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "ssss", $nama_pengeluaran, $keterangan, $nominal, $tanggal);
+    }
 
-    if (mysqli_affected_rows($conn) > 0) {
+    if ($stmt && mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_close($stmt);
         echo "
             <script>
                 alert('Data pengeluaran tetap berhasil ditambahkan!');
@@ -20,9 +23,13 @@ if (isset($_POST["submit"])) {
             </script>
         ";
     } else {
+        $error = $stmt ? mysqli_stmt_error($stmt) : mysqli_error($conn);
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
         echo "
             <script>
-                alert('Data pengeluaran tetap gagal ditambahkan!');
+                alert(" . json_encode('Data pengeluaran tetap gagal ditambahkan: ' . $error) . ");
                 document.location.href = 'pengeluaran_tetap.php';
             </script>
         ";
@@ -90,6 +97,12 @@ if (isset($_POST["submit"])) {
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">
@@ -117,19 +130,19 @@ if (isset($_POST["submit"])) {
                             <form action="" method="post">
                                 <div class="form-group">
                                     <label for="nama_pengeluaran">Nama Pengeluaran</label>
-                                    <input type="text" class="form-control" name="nama_pengeluaran" id="nama_pengeluaran" placeholder="Contoh: Gaji Karyawan / Sewa Tempat" required>
+                                    <input type="text" class="form-control" name="nama_pengeluaran" id="nama_pengeluaran" placeholder="Contoh: Gaji Karyawan / Sewa Tempat">
                                 </div>
                                 <div class="form-group">
                                     <label for="keterangan">Keterangan</label>
-                                    <textarea class="form-control" name="keterangan" id="keterangan" rows="3" placeholder="Rincian pengeluaran" required></textarea>
+                                    <textarea class="form-control" name="keterangan" id="keterangan" rows="3" placeholder="Rincian pengeluaran"></textarea>
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>
-                                    <input type="number" class="form-control" name="nominal" id="nominal" required>
+                                    <input type="number" class="form-control" name="nominal" id="nominal">
                                 </div>
                                 <div class="form-group">
                                     <label for="tanggal">Tanggal</label>
-                                    <input type="date" class="form-control" name="tanggal" id="tanggal" required>
+                                    <input type="date" class="form-control" name="tanggal" id="tanggal">
                                 </div>
                                 <button type="submit" name="submit" class="btn btn-primary">Simpan</button>
                                 <a href="pengeluaran_tetap.php" class="btn btn-secondary">Batal</a>

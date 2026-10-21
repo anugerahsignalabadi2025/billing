@@ -3,9 +3,96 @@ require_once __DIR__ . '/auth.php';
 
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
-$result = mysqli_query($conn, "SELECT * FROM omset");
-$totalResult = mysqli_query($conn, "SELECT COALESCE(SUM(nominal), 0) AS total_nominal FROM omset");
-$totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
+$periodeAktif = date('Y-m');
+$csrfToken = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32));
+$_SESSION['csrf_token'] = $csrfToken;
+$message = '';
+$messageType = 'success';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_payment') {
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    $dibayar = $_POST['dibayar'] ?? '';
+
+    if (!hash_equals($csrfToken, $_POST['csrf_token'] ?? '') || !$id || ($dibayar !== '' && (!is_numeric($dibayar) || (float) $dibayar < 0))) {
+        $message = 'Data pembayaran tidak valid. Silakan muat ulang halaman dan coba lagi.';
+        $messageType = 'danger';
+    } else {
+        $checkStmt = mysqli_prepare($conn, 'SELECT nominal FROM omset WHERE id = ?');
+        if (!$checkStmt) {
+            http_response_code(500);
+            die('Gagal memeriksa tagihan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+        }
+        $dibayar = $dibayar === '' ? 0.0 : (float) $dibayar;
+        mysqli_stmt_bind_param($checkStmt, 'i', $id);
+        if (!mysqli_stmt_execute($checkStmt)) {
+            http_response_code(500);
+            die('Gagal memeriksa tagihan: ' . htmlspecialchars(mysqli_stmt_error($checkStmt), ENT_QUOTES, 'UTF-8'));
+        }
+        $checkResult = mysqli_stmt_get_result($checkStmt);
+        $invoice = mysqli_fetch_assoc($checkResult);
+        mysqli_stmt_close($checkStmt);
+
+        if (!$invoice || $dibayar > (float) $invoice['nominal']) {
+            $message = 'Tagihan tidak ditemukan atau pembayaran melebihi nominal tagihan.';
+            $messageType = 'danger';
+        } else {
+            $stmt = mysqli_prepare($conn, 'UPDATE omset SET dibayar = ? WHERE id = ?');
+            if (!$stmt) {
+                http_response_code(500);
+                die('Gagal menyiapkan pembaruan pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+            }
+            mysqli_stmt_bind_param($stmt, 'di', $dibayar, $id);
+            if (!mysqli_stmt_execute($stmt)) {
+                http_response_code(500);
+                die('Gagal menyimpan pembayaran: ' . htmlspecialchars(mysqli_stmt_error($stmt), ENT_QUOTES, 'UTF-8'));
+            }
+            mysqli_stmt_close($stmt);
+            $message = 'Pembayaran berhasil diperbarui.';
+        }
+    }
+}
+
+$closedStmt = mysqli_prepare($conn, 'SELECT 1 FROM periode_bulanan WHERE periode = ?');
+if (!$closedStmt) {
+    http_response_code(500);
+    die('Gagal memeriksa periode tagihan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
+mysqli_stmt_bind_param($closedStmt, 's', $periodeAktif);
+mysqli_stmt_execute($closedStmt);
+$closedResult = mysqli_stmt_get_result($closedStmt);
+$periodeDitutup = mysqli_fetch_assoc($closedResult) !== null;
+mysqli_stmt_close($closedStmt);
+
+if (!$periodeDitutup) {
+    $invoiceDate = $periodeAktif . '-01';
+    $stmt = mysqli_prepare($conn, "INSERT INTO omset (customer_id, nama, notlp, alamat, nominal, tanggal, paket, periode, dibayar)
+        SELECT pelanggan.id, pelanggan.nama, CAST(pelanggan.notlp AS CHAR), pelanggan.alamat, 150000, ?, COALESCE(pelanggan.paket, ''), ?, 0
+        FROM datapelangganasa AS pelanggan
+        ON DUPLICATE KEY UPDATE periode = VALUES(periode)");
+    if (!$stmt) {
+        http_response_code(500);
+        die('Gagal menyiapkan tagihan bulanan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+    }
+    mysqli_stmt_bind_param($stmt, 'ss', $invoiceDate, $periodeAktif);
+    if (!mysqli_stmt_execute($stmt)) {
+        http_response_code(500);
+        die('Gagal membuat tagihan bulanan: ' . htmlspecialchars(mysqli_stmt_error($stmt), ENT_QUOTES, 'UTF-8'));
+    }
+    mysqli_stmt_close($stmt);
+}
+
+$result = mysqli_query($conn, 'SELECT * FROM omset ORDER BY tanggal DESC, id DESC');
+if (!$result) {
+    http_response_code(500);
+    die('Gagal mengambil data omset: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
+$totalResult = mysqli_query($conn, 'SELECT COALESCE(SUM(nominal), 0) AS total_nominal, COALESCE(SUM(dibayar), 0) AS total_dibayar FROM omset');
+if (!$totalResult) {
+    http_response_code(500);
+    die('Gagal menghitung total omset: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
+$totalOmset = mysqli_fetch_assoc($totalResult);
+$sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total_dibayar'];
 
 ?>
 
@@ -87,6 +174,12 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                     <span>ACS</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="database.php">
+                    <i class="fas fa-fw fa-database"></i>
+                    <span>Database</span>
+                </a>
+            </li>
 
         </ul>
 
@@ -133,15 +226,42 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                                     <i class="fas fa-code"></i> API / JSON
                                 </a>
                                 <a href="tambah_omset.php" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-plus"></i> Tambah Omset
+                                    <i class="fas fa-plus"></i> Tambah Omset Manual
                                 </a>
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="card border-left-success shadow-sm mb-4">
-                                <div class="card-body">
-                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Nominal Omset</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">Rp <?= number_format((float) $totalNominal, 0, ',', '.'); ?></div>
+                            <?php if ($message !== ''): ?>
+                                <div class="alert alert-<?= $messageType; ?>" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
+                            <?php endif; ?>
+                            <?php if ($periodeDitutup): ?>
+                                <div class="alert alert-info" role="alert">Periode <?= htmlspecialchars($periodeAktif, ENT_QUOTES, 'UTF-8'); ?> sudah ditutup. Tagihan baru bulan ini tidak dibuat; data bulan sebelumnya tersedia di menu Database.</div>
+                            <?php endif; ?>
+                            <p class="text-muted">Tagihan bulanan Rp150.000 dibuat otomatis untuk setiap pelanggan. Kolom pembayaran berisi akumulasi total yang sudah dibayar.</p>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card border-left-success shadow-sm h-100">
+                                        <div class="card-body">
+                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Tagihan</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">Rp <?= number_format((float) $totalOmset['total_nominal'], 0, ',', '.'); ?></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card border-left-primary shadow-sm h-100">
+                                        <div class="card-body">
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Sudah Dibayar</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">Rp <?= number_format((float) $totalOmset['total_dibayar'], 0, ',', '.'); ?></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card border-left-danger shadow-sm h-100">
+                                        <div class="card-body">
+                                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Sisa Tagihan</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">Rp <?= number_format($sisaTagihan, 0, ',', '.'); ?></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="table-responsive">
@@ -153,22 +273,48 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                                             <th>No. Telepon</th>
                                             <th>Alamat</th>
                                             <th>Paket</th>
+                                            <th>Periode</th>
                                             <th>Nominal</th>
+                                            <th>Dibayar</th>
+                                            <th>Status</th>
                                             <th>Tanggal</th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php while($row = mysqli_fetch_assoc($result)): ?>
-                                        <tr>
+                                        <?php
+                                            $nominalTagihan = (float) $row['nominal'];
+                                            $jumlahDibayar = (float) $row['dibayar'];
+                                            $statusPembayaran = $row['nominal'] === null
+                                                ? 'Nominal belum diisi'
+                                                : ($jumlahDibayar >= $nominalTagihan ? 'Lunas' : ($jumlahDibayar > 0 ? 'Cicil' : 'Belum lunas'));
+                                        ?>
+                                        <tr class="<?= in_array($statusPembayaran, ['Belum lunas', 'Cicil'], true) ? 'table-danger' : ''; ?>">
                                             <td><?= $row["id"]; ?></td>
-                                            <td><?= $row["nama"]; ?></td>
-                                            <td><?= $row["notlp"]; ?></td>
-                                            <td><?= $row["alamat"]; ?></td>
-                                            <td><?= isset($row["paket"]) ? $row["paket"] : '-'; ?></td>
-                                            <td>Rp <?= number_format($row["nominal"], 0, ',', '.'); ?></td>
-                                            <td><?= $row["tanggal"]; ?></td>
+                                            <td><?= htmlspecialchars($row["nama"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= htmlspecialchars($row["notlp"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= htmlspecialchars($row["alamat"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= htmlspecialchars($row["paket"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= htmlspecialchars($row['periode'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= $row['nominal'] === null ? '' : 'Rp ' . number_format($nominalTagihan, 0, ',', '.'); ?></td>
+                                            <td>Rp <?= number_format($jumlahDibayar, 0, ',', '.'); ?></td>
+                                            <td><span class="badge badge-<?= $statusPembayaran === 'Lunas' ? 'success' : (in_array($statusPembayaran, ['Cicil', 'Nominal belum diisi'], true) ? 'warning' : 'danger'); ?>"><?= $statusPembayaran; ?></span></td>
+                                            <td><?= htmlspecialchars($row["tanggal"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td>
+                                                <?php if (!$periodeDitutup): ?>
+                                                <form method="post" action="omset.php" class="mb-2">
+                                                    <input type="hidden" name="action" value="update_payment">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <input type="hidden" name="id" value="<?= (int) $row['id']; ?>">
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" name="dibayar" class="form-control" min="0" max="<?= $nominalTagihan; ?>" step="0.01" value="<?= $jumlahDibayar; ?>" aria-label="Jumlah yang sudah dibayar">
+                                                        <div class="input-group-append">
+                                                            <button type="submit" class="btn btn-primary">Simpan</button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                                <?php endif; ?>
                                                 <a href="ubah_omset.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </a>
