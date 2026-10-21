@@ -36,16 +36,13 @@ if ($type === 'excel') {
             (int) $item['id'],
             $item['nama'],
             $item['notlp'],
-            $item['alamat'],
-            $item['paket'],
-            $item['periode'],
             $nominal,
             $dibayar,
             $status,
             $item['tanggal']
         ];
     }
-    outputExcelWorkbook('data_omset_' . date('Y-m-d') . '.xls', ['ID', 'Nama', 'Nomor Telepon', 'Alamat', 'Paket', 'Periode', 'Tagihan', 'Dibayar', 'Status', 'Tanggal'], $rows);
+    outputExcelWorkbook('data_omset_' . date('Y-m-d') . '.xls', ['ID', 'Nama', 'Nomor Telepon', 'Tagihan', 'Dibayar', 'Status', 'Tanggal'], $rows);
 } else {
     header("Content-Type: application/json; charset=utf-8");
     echo json_encode([

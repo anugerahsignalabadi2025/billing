@@ -11,15 +11,13 @@ $data = mysqli_fetch_assoc($result);
 if (isset($_POST["submit"])) {
     $nama = trim($_POST["nama"] ?? "");
     $notlp = trim($_POST["notlp"] ?? "");
-    $alamat = trim($_POST["alamat"] ?? "");
-    $paket = trim($_POST["paket"] ?? "");
     $nominal = trim($_POST["nominal"] ?? "");
     $tanggal = trim($_POST["tanggal"] ?? "");
 
-    $query = "UPDATE omset SET nama = NULLIF(?, ''), notlp = NULLIF(?, ''), alamat = NULLIF(?, ''), paket = NULLIF(?, ''), nominal = NULLIF(?, ''), tanggal = NULLIF(?, ''), dibayar = LEAST(dibayar, COALESCE(NULLIF(?, ''), 0)) WHERE id = ?";
+    $query = "UPDATE omset SET nama = NULLIF(?, ''), notlp = NULLIF(?, ''), nominal = NULLIF(?, ''), tanggal = NULLIF(?, ''), dibayar = LEAST(dibayar, COALESCE(NULLIF(?, ''), 0)) WHERE id = ?";
     $stmt = mysqli_prepare($conn, $query);
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "sssssssi", $nama, $notlp, $alamat, $paket, $nominal, $tanggal, $nominal, $id);
+        mysqli_stmt_bind_param($stmt, "sssssi", $nama, $notlp, $nominal, $tanggal, $nominal, $id);
     }
 
     if ($stmt && mysqli_stmt_execute($stmt)) {
@@ -143,14 +141,6 @@ if (isset($_POST["submit"])) {
                                 <div class="form-group">
                                     <label for="notlp">No. Telepon</label>
                                     <input type="text" class="form-control" name="notlp" id="notlp" value="<?= htmlspecialchars($data['notlp'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label for="alamat">Alamat</label>
-                                    <textarea class="form-control" name="alamat" id="alamat" rows="3"><?= htmlspecialchars($data['alamat'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="paket">Paket</label>
-                                    <input type="text" class="form-control" name="paket" id="paket" value="<?= htmlspecialchars($data['paket'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>

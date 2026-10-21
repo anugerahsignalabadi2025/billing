@@ -271,9 +271,6 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                             <th>ID</th>
                                             <th>Nama</th>
                                             <th>No. Telepon</th>
-                                            <th>Alamat</th>
-                                            <th>Paket</th>
-                                            <th>Periode</th>
                                             <th>Nominal</th>
                                             <th>Dibayar</th>
                                             <th>Status</th>
@@ -289,14 +286,14 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                             $statusPembayaran = $row['nominal'] === null
                                                 ? 'Nominal belum diisi'
                                                 : ($jumlahDibayar >= $nominalTagihan ? 'Lunas' : ($jumlahDibayar > 0 ? 'Cicil' : 'Belum lunas'));
+                                            $warnaBaris = $statusPembayaran === 'Belum lunas'
+                                                ? 'table-danger'
+                                                : (in_array($statusPembayaran, ['Cicil', 'Nominal belum diisi'], true) ? 'table-warning' : '');
                                         ?>
-                                        <tr class="<?= in_array($statusPembayaran, ['Belum lunas', 'Cicil'], true) ? 'table-danger' : ''; ?>">
+                                        <tr class="<?= $warnaBaris; ?>">
                                             <td><?= $row["id"]; ?></td>
                                             <td><?= htmlspecialchars($row["nama"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= htmlspecialchars($row["notlp"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?= htmlspecialchars($row["alamat"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?= htmlspecialchars($row["paket"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?= htmlspecialchars($row['periode'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= $row['nominal'] === null ? '' : 'Rp ' . number_format($nominalTagihan, 0, ',', '.'); ?></td>
                                             <td>Rp <?= number_format($jumlahDibayar, 0, ',', '.'); ?></td>
                                             <td><span class="badge badge-<?= $statusPembayaran === 'Lunas' ? 'success' : (in_array($statusPembayaran, ['Cicil', 'Nominal belum diisi'], true) ? 'warning' : 'danger'); ?>"><?= $statusPembayaran; ?></span></td>

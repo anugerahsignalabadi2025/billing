@@ -157,7 +157,7 @@ $archiveTotals = mysqli_fetch_assoc($archiveTotalsResult);
                             <?php if ($closedPeriod): ?>
                                 <div class="alert alert-success mb-0">Periode ini sudah diarsipkan pada <?= htmlspecialchars($closedPeriod['ditutup_pada'], ENT_QUOTES, 'UTF-8'); ?>. Data pelanggan tetap disimpan; tagihan bulan ini tidak dibuat kembali.</div>
                             <?php else: ?>
-                                <p>Tagihan, cicilan, dan seluruh pengeluaran aktif akan disalin ke arsip, lalu dikosongkan. Data pelanggan tidak dihapus. Sisa tagihan bulan ini tetap ada di arsip saja dan tidak dibawa ke bulan depan.</p>
+                                <p>Tagihan, cicilan, dan seluruh pengeluaran aktif akan disalin ke arsip, lalu dikosongkan. Data pelanggan tidak dihapus. Tagihan yang belum lunas atau masih dicicil tetap tercatat di tabel arsip, ditandai merah atau kuning, dan tidak dibawa ke bulan depan.</p>
                                 <form method="post" onsubmit="return confirm('Arsipkan dan kosongkan semua omset serta pengeluaran aktif untuk tutup bulan? Data pelanggan tidak dihapus.');">
                                     <input type="hidden" name="action" value="close_month">
                                     <input type="hidden" name="periode" value="<?= htmlspecialchars($periodeAktif, ENT_QUOTES, 'UTF-8'); ?>">
@@ -178,16 +178,31 @@ $archiveTotals = mysqli_fetch_assoc($archiveTotalsResult);
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                    <thead><tr><th>Periode Arsip</th><th>Jenis</th><th>Nama / Rincian</th><th>No. Telepon</th><th>Tagihan</th><th>Dibayar</th><th>Tanggal</th><th>Diarsipkan</th></tr></thead>
+                                    <thead><tr><th>Periode Arsip</th><th>Jenis</th><th>Nama / Rincian</th><th>No. Telepon</th><th>Tagihan</th><th>Dibayar</th><th>Status</th><th>Tanggal</th><th>Diarsipkan</th></tr></thead>
                                     <tbody>
                                         <?php while ($row = mysqli_fetch_assoc($archiveResult)): ?>
-                                            <tr>
+                                            <?php
+                                                $statusArsip = '-';
+                                                $warnaBaris = '';
+                                                if ($row['jenis_data'] === 'omset') {
+                                                    $nominalArsip = $row['nominal'] === null ? null : (float) $row['nominal'];
+                                                    $dibayarArsip = (float) ($row['dibayar'] ?? 0);
+                                                    $statusArsip = $nominalArsip === null
+                                                        ? 'Nominal belum diisi'
+                                                        : ($dibayarArsip >= $nominalArsip ? 'Lunas' : ($dibayarArsip > 0 ? 'Cicil' : 'Belum lunas'));
+                                                    $warnaBaris = $statusArsip === 'Belum lunas'
+                                                        ? 'table-danger'
+                                                        : (in_array($statusArsip, ['Cicil', 'Nominal belum diisi'], true) ? 'table-warning' : '');
+                                                }
+                                            ?>
+                                            <tr class="<?= $warnaBaris; ?>">
                                                 <td><?= htmlspecialchars($row['periode_arsip'], ENT_QUOTES, 'UTF-8'); ?></td>
                                                 <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['jenis_data'])), ENT_QUOTES, 'UTF-8'); ?></td>
                                                 <td><?= htmlspecialchars($row['nama'] ?? $row['nama_pengeluaran'] ?? '-', ENT_QUOTES, 'UTF-8'); ?><?= $row['keterangan'] ? ' - ' . htmlspecialchars($row['keterangan'], ENT_QUOTES, 'UTF-8') : ''; ?></td>
                                                 <td><?= htmlspecialchars($row['notlp'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
                                                 <td><?= $row['nominal'] === null ? '-' : 'Rp ' . number_format((float) $row['nominal'], 0, ',', '.'); ?></td>
                                                 <td><?= $row['dibayar'] === null ? '-' : 'Rp ' . number_format((float) $row['dibayar'], 0, ',', '.'); ?></td>
+                                                <td><?= htmlspecialchars($statusArsip, ENT_QUOTES, 'UTF-8'); ?></td>
                                                 <td><?= htmlspecialchars($row['tanggal'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
                                                 <td><?= htmlspecialchars($row['diarsipkan_pada'], ENT_QUOTES, 'UTF-8'); ?></td>
                                             </tr>

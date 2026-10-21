@@ -6,14 +6,12 @@ $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 if (isset($_POST["submit"])) {
     $nama = trim($_POST["nama"] ?? "");
     $notlp = trim($_POST["notlp"] ?? "");
-    $alamat = trim($_POST["alamat"] ?? "");
-    $paket = trim($_POST["paket"] ?? "");
     $nominal = trim($_POST["nominal"] ?? "");
     $tanggal = trim($_POST["tanggal"] ?? "");
 
-    $stmt = mysqli_prepare($conn, "INSERT INTO omset (nama, notlp, alamat, paket, nominal, tanggal) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))");
+    $stmt = mysqli_prepare($conn, "INSERT INTO omset (nama, notlp, nominal, tanggal) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))");
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "ssssss", $nama, $notlp, $alamat, $paket, $nominal, $tanggal);
+        mysqli_stmt_bind_param($stmt, "ssss", $nama, $notlp, $nominal, $tanggal);
     }
 
     if ($stmt && mysqli_stmt_execute($stmt)) {
@@ -137,14 +135,6 @@ if (isset($_POST["submit"])) {
                                 <div class="form-group">
                                     <label for="notlp">No. Telepon</label>
                                     <input type="text" class="form-control" name="notlp" id="notlp">
-                                </div>
-                                <div class="form-group">
-                                    <label for="alamat">Alamat</label>
-                                    <textarea class="form-control" name="alamat" id="alamat" rows="3"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="paket">Paket</label>
-                                    <input type="text" class="form-control" name="paket" id="paket">
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>
