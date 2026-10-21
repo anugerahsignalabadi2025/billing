@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/auth.php';
+
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
 if (!$conn) {
@@ -21,9 +23,9 @@ if ($type === 'excel') {
     header("Content-Type: application/vnd.ms-excel");
     header("Content-Disposition: attachment; filename=data_pelanggan_" . date('Y-m-d') . ".xls");
     
-    echo "ID\tNama\tNomor Telepon\tAlamat\tPaket\n";
+    echo "ID\tNama\tNomor Telepon\tAlamat\tPaket\tTanggal Pemasangan\n";
     foreach ($data as $item) {
-        echo $item['id'] . "\t" . $item['nama'] . "\t" . $item['notlp'] . "\t" . $item['alamat'] . "\t" . $item['paket'] . "\n";
+        echo $item['id'] . "\t" . $item['nama'] . "\t" . $item['notlp'] . "\t" . $item['alamat'] . "\t" . $item['paket'] . "\t" . ($item['tanggal_pemasangan'] ?? '-') . "\n";
     }
     exit;
 } else {

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/auth.php';
 
 $conn = mysqli_connect("localhost", "root", "", "billing_asa"); 
 
@@ -23,6 +24,7 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
     <link href="css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 
 </head>
 
@@ -143,6 +145,7 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                                             <th>Nomor Telepon</th>
                                             <th>Alamat</th>
                                             <th>Paket</th>
+                                            <th>Tanggal Pemasangan</th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
@@ -154,6 +157,7 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                                             <td><?= $row["notlp"]; ?></td>
                                             <td><?= $row["alamat"]; ?></td>
                                             <td><?= $row["paket"]; ?></td>
+                                            <td><?= htmlspecialchars($row["tanggal_pemasangan"] ?? "-", ENT_QUOTES, "UTF-8"); ?></td>
                                             <td>
                                                 <a href="ubah.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
                                                     <i class="fas fa-edit"></i> Edit
@@ -203,7 +207,7 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="login.php">Logout</a>
+                    <a class="btn btn-primary" href="logout.php">Logout</a>
                 </div>
             </div>
         </div>
@@ -215,7 +219,7 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
     <script src="js/sb-admin-2.min.js"></script>
     <script src="vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script src="js/demo/datatables-demo.js"></script>
+    <script src="js/demo/datatables-demo.js?v=2"></script>
 
 </body>
 

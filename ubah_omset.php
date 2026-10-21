@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/auth.php';
+
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
 $id = $_GET["id"];

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/auth.php';
+
 $conn = mysqli_connect("localhost", "root", "", "billing_asa"); 
 
 if (!$conn) {
@@ -12,15 +14,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $notlp = trim($_POST["notlp"] ?? "");
     $alamat = trim($_POST["alamat"] ?? "");
     $paket = trim($_POST["paket"] ?? "");
+    $tanggal_pemasangan = trim($_POST["tanggal_pemasangan"] ?? "");
 
-    if ($nama === "" || $notlp === "" || $alamat === "" || $paket === "") {
+    if ($nama === "" || $notlp === "" || $alamat === "" || $paket === "" || $tanggal_pemasangan === "") {
         $message = "Semua field harus diisi.";
     } else {
-        $query = "INSERT INTO datapelangganasa (nama, notlp, alamat, paket) VALUES (?, ?, ?, ?)";
+        $query = "INSERT INTO datapelangganasa (nama, notlp, alamat, paket, tanggal_pemasangan) VALUES (?, ?, ?, ?, ?)";
         $stmt = mysqli_prepare($conn, $query);
 
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "ssss", $nama, $notlp, $alamat, $paket);
+            mysqli_stmt_bind_param($stmt, "sssss", $nama, $notlp, $alamat, $paket, $tanggal_pemasangan);
 
             if (mysqli_stmt_execute($stmt)) {
                 header("Location: tables.php");
@@ -133,6 +136,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 <div class="form-group">
                                     <label for="paket">Paket</label>
                                     <input type="text" class="form-control" id="paket" name="paket" placeholder="Masukkan jenis paket" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="tanggal_pemasangan">Tanggal Pemasangan</label>
+                                    <input type="date" class="form-control" id="tanggal_pemasangan" name="tanggal_pemasangan" required>
                                 </div>
 
                                 <button type="submit" class="btn btn-primary">Simpan</button>

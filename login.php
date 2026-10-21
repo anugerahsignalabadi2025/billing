@@ -1,3 +1,37 @@
+<?php
+session_start();
+
+if (!empty($_SESSION['authenticated'])) {
+    header('Location: dashboard.php');
+    exit;
+}
+
+$login_error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    if ($username !== '') {
+        try {
+            $connection = mysqli_connect('localhost', $username, $password, 'billing_asa');
+        } catch (mysqli_sql_exception $exception) {
+            $connection = false;
+        }
+
+        if ($connection) {
+            mysqli_close($connection);
+            session_regenerate_id(true);
+            $_SESSION['authenticated'] = true;
+            $_SESSION['username'] = $username;
+            header('Location: dashboard.php');
+            exit;
+        }
+    }
+
+    $login_error = 'Username atau password MySQL tidak valid, atau database billing_asa tidak dapat diakses.';
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -62,21 +96,25 @@
                             <div class="col-lg-6">
                                 <div class="p-5">
                                     <div class="text-center">
-                                        <h1 class="h4 text-gray-900 mb-4">Welcome Back!</h1>
+                                        <h1 class="h4 text-gray-900 mb-4">Login</h1>
                                     </div>
-                                    <form class="user">
+                                    <?php if ($login_error !== ''): ?>
+                                        <div class="alert alert-danger" role="alert"><?= htmlspecialchars($login_error, ENT_QUOTES, 'UTF-8') ?></div>
+                                    <?php endif; ?>
+                                    <form class="user" method="post" action="login.php">
                                         <div class="form-group">
-                                            <input type="email" class="form-control form-control-user"
-                                                id="exampleInputEmail" aria-describedby="emailHelp"
-                                                placeholder="Enter Email Address...">
+                                            <input type="text" class="form-control form-control-user"
+                                                id="username" name="username" placeholder="Username MySQL"
+                                                autocomplete="username" value="root" required>
                                         </div>
                                         <div class="form-group">
                                             <input type="password" class="form-control form-control-user"
-                                                id="exampleInputPassword" placeholder="Password">
+                                                id="password" name="password" placeholder="Password MySQL"
+                                                autocomplete="current-password">
                                         </div>
-                                        <a href="index.php" class="btn btn-primary btn-user btn-block">
+                                        <button type="submit" class="btn btn-primary btn-user btn-block">
                                             Login
-                                        </a>
+                                        </button>
                                         <hr>
                                         <!-- <div class="text-center">
                                             <a class="small" href="register.html">Create an Account!</a>

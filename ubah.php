@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/auth.php';
+
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
 if (!$conn) {
@@ -32,15 +34,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $notlp = trim($_POST["notlp"] ?? "");
     $alamat = trim($_POST["alamat"] ?? "");
     $paket = trim($_POST["paket"] ?? "");
+    $tanggal_pemasangan = trim($_POST["tanggal_pemasangan"] ?? "");
 
     if ($nama === "" || $notlp === "" || $alamat === "" || $paket === "") {
         $message = "Semua field harus diisi.";
     } else {
-        $query = "UPDATE datapelangganasa SET nama = ?, notlp = ?, alamat = ?, paket = ? WHERE id = ?";
+        $query = "UPDATE datapelangganasa SET nama = ?, notlp = ?, alamat = ?, paket = ?, tanggal_pemasangan = NULLIF(?, '') WHERE id = ?";
         $stmt = mysqli_prepare($conn, $query);
 
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "ssssi", $nama, $notlp, $alamat, $paket, $id);
+            mysqli_stmt_bind_param($stmt, "sssssi", $nama, $notlp, $alamat, $paket, $tanggal_pemasangan, $id);
 
             if (mysqli_stmt_execute($stmt)) {
                 echo "
@@ -158,6 +161,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 <div class="form-group">
                                     <label for="paket">Paket</label>
                                     <input type="text" class="form-control" id="paket" name="paket" value="<?php echo htmlspecialchars($data['paket']); ?>" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="tanggal_pemasangan">Tanggal Pemasangan</label>
+                                    <input type="date" class="form-control" id="tanggal_pemasangan" name="tanggal_pemasangan" value="<?php echo htmlspecialchars($data['tanggal_pemasangan'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
 
                                 <button type="submit" class="btn btn-primary">Update</button>

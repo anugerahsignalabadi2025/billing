@@ -1,8 +1,11 @@
 <?php
+require_once __DIR__ . '/auth.php';
 
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
 
 $result = mysqli_query($conn, "SELECT * FROM omset");
+$totalResult = mysqli_query($conn, "SELECT COALESCE(SUM(nominal), 0) AS total_nominal FROM omset");
+$totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
 
 ?>
 
@@ -23,6 +26,7 @@ $result = mysqli_query($conn, "SELECT * FROM omset");
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
     <link href="css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 
 </head>
 
@@ -134,6 +138,12 @@ $result = mysqli_query($conn, "SELECT * FROM omset");
                             </div>
                         </div>
                         <div class="card-body">
+                            <div class="card border-left-success shadow-sm mb-4">
+                                <div class="card-body">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Nominal Omset</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">Rp <?= number_format((float) $totalNominal, 0, ',', '.'); ?></div>
+                                </div>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
@@ -207,7 +217,7 @@ $result = mysqli_query($conn, "SELECT * FROM omset");
                 <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                    <a class="btn btn-primary" href="login.php">Logout</a>
+                    <a class="btn btn-primary" href="logout.php">Logout</a>
                 </div>
             </div>
         </div>
@@ -223,7 +233,7 @@ $result = mysqli_query($conn, "SELECT * FROM omset");
     <script src="vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="vendor/datatables/dataTables.bootstrap4.min.js"></script>
 
-    <script src="js/demo/datatables-demo.js"></script>
+    <script src="js/demo/datatables-demo.js?v=2"></script>
 
 </body>
 
