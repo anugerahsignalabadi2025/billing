@@ -69,7 +69,6 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                         <a class="collapse-item" href="omset.php">Omset</a>
                         <a class="collapse-item" href="pengeluaran_tetap.php">Pengeluaran Tetap</a>
                         <a class="collapse-item" href="pengeluaran_takterduga.php">Pengeluaran Takterduga</a>
-                        <a class="collapse-item" href="penghasilan.php">Penghasilan</a>
                     </div>
                 </div>
             </li>
