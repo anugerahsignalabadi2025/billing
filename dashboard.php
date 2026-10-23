@@ -98,6 +98,7 @@ $sisa_tagihan = $totals['total_tagihan'] - $totals['total_omset'];
                     <span>Database</span>
                 </a>
             </li>
+            <?php include __DIR__ . '/admin_menu.php'; ?>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">

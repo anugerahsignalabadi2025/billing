@@ -2,8 +2,13 @@
 require_once __DIR__ . '/auth.php';
 
 $conn = mysqli_connect("localhost", "root", "", "billing_asa");
+if (!$conn) {
+    http_response_code(500);
+    die('Koneksi database gagal: ' . htmlspecialchars(mysqli_connect_error(), ENT_QUOTES, 'UTF-8'));
+}
 
 $periodeAktif = date('Y-m');
+$hariIni = new DateTimeImmutable('today');
 $csrfToken = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32));
 $_SESSION['csrf_token'] = $csrfToken;
 $message = '';
@@ -12,8 +17,9 @@ $messageType = 'success';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_payment') {
     $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     $dibayar = $_POST['dibayar'] ?? '';
+    $confirmation = $_POST['confirm_payment_update'] ?? '';
 
-    if (!hash_equals($csrfToken, $_POST['csrf_token'] ?? '') || !$id || ($dibayar !== '' && (!is_numeric($dibayar) || (float) $dibayar < 0))) {
+    if (!hash_equals($csrfToken, $_POST['csrf_token'] ?? '') || !$id || ($dibayar !== '' && (!is_numeric($dibayar) || (float) $dibayar < 0)) || !in_array($confirmation, ['', 'yes'], true)) {
         $message = 'Data pembayaran tidak valid. Silakan muat ulang halaman dan coba lagi.';
         $messageType = 'danger';
     } else {
@@ -32,9 +38,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         $invoice = mysqli_fetch_assoc($checkResult);
         mysqli_stmt_close($checkStmt);
 
-        if (!$invoice || $dibayar > (float) $invoice['nominal']) {
+        if (!$invoice || $invoice['nominal'] === null || $dibayar > (float) $invoice['nominal']) {
             $message = 'Tagihan tidak ditemukan atau pembayaran melebihi nominal tagihan.';
             $messageType = 'danger';
+        } elseif ($confirmation !== 'yes') {
+            $previousPaid = (float) $invoice['dibayar'];
+            if ($dibayar !== $previousPaid) {
+                $csrfTokenForConfirm = htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8');
+                $dibayarForConfirm = htmlspecialchars((string) $dibayar, ENT_QUOTES, 'UTF-8');
+                $idForConfirm = (int) $id;
+                $previousForConfirm = number_format($previousPaid, 0, ',', '.');
+                $newForConfirm = number_format($dibayar, 0, ',', '.');
+                echo '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Konfirmasi Pembayaran</title><link href="css/sb-admin-2.min.css" rel="stylesheet"></head><body class="bg-light"><div class="container py-5"><div class="card shadow mx-auto" style="max-width: 560px"><div class="card-header font-weight-bold text-warning">Konfirmasi perubahan pembayaran</div><div class="card-body"><p>Jumlah pembayaran akan berubah dari <strong>Rp ' . $previousForConfirm . '</strong> menjadi <strong>Rp ' . $newForConfirm . '</strong>.</p><p class="text-danger">Jika tersimpan sebagai Rp0, jumlah cicilan sebelumnya akan tertimpa. Pastikan nominal yang baru sudah benar.</p><form method="post" action="omset.php"><input type="hidden" name="action" value="update_payment"><input type="hidden" name="csrf_token" value="' . $csrfTokenForConfirm . '"><input type="hidden" name="id" value="' . $idForConfirm . '"><input type="hidden" name="dibayar" value="' . $dibayarForConfirm . '"><input type="hidden" name="confirm_payment_update" value="yes"><button type="submit" class="btn btn-warning">Ya, ganti nominal</button> <a href="omset.php" class="btn btn-secondary">Batal</a></form></div></div></div></body></html>';
+                exit;
+            }
         } else {
             $stmt = mysqli_prepare($conn, 'UPDATE omset SET dibayar = ? WHERE id = ?');
             if (!$stmt) {
@@ -63,22 +80,98 @@ $closedResult = mysqli_stmt_get_result($closedStmt);
 $periodeDitutup = mysqli_fetch_assoc($closedResult) !== null;
 mysqli_stmt_close($closedStmt);
 
+$closedPeriodsResult = mysqli_query($conn, 'SELECT periode FROM periode_bulanan');
+if (!$closedPeriodsResult) {
+    http_response_code(500);
+    die('Gagal mengambil daftar periode tertutup: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
+$closedPeriods = [];
+while ($closedPeriod = mysqli_fetch_assoc($closedPeriodsResult)) {
+    $closedPeriods[$closedPeriod['periode']] = true;
+}
+
 if (!$periodeDitutup) {
-    $invoiceDate = $periodeAktif . '-01';
+    $customersResult = mysqli_query($conn, "SELECT id, nama, notlp, alamat, paket, tanggal_pemasangan
+        FROM datapelangganasa
+        WHERE tanggal_pemasangan IS NOT NULL AND YEAR(tanggal_pemasangan) > 0");
+    if (!$customersResult) {
+        http_response_code(500);
+        die('Gagal mengambil tanggal pemasangan pelanggan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+    }
+
     $stmt = mysqli_prepare($conn, "INSERT INTO omset (customer_id, nama, notlp, alamat, nominal, tanggal, paket, periode, dibayar)
-        SELECT pelanggan.id, pelanggan.nama, CAST(pelanggan.notlp AS CHAR), pelanggan.alamat, 150000, ?, COALESCE(pelanggan.paket, ''), ?, 0
-        FROM datapelangganasa AS pelanggan
-        ON DUPLICATE KEY UPDATE periode = VALUES(periode)");
+        VALUES (?, ?, CAST(? AS CHAR), ?, 150000, ?, COALESCE(?, ''), ?, 0)
+        ON DUPLICATE KEY UPDATE tanggal = VALUES(tanggal)");
     if (!$stmt) {
         http_response_code(500);
         die('Gagal menyiapkan tagihan bulanan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
     }
-    mysqli_stmt_bind_param($stmt, 'ss', $invoiceDate, $periodeAktif);
-    if (!mysqli_stmt_execute($stmt)) {
+
+    $removePrematureInvoice = mysqli_prepare($conn, 'DELETE FROM omset WHERE customer_id = ? AND periode = ? AND dibayar = 0');
+    if (!$removePrematureInvoice) {
         http_response_code(500);
-        die('Gagal membuat tagihan bulanan: ' . htmlspecialchars(mysqli_stmt_error($stmt), ENT_QUOTES, 'UTF-8'));
+        die('Gagal menyiapkan koreksi tagihan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+    }
+
+    while ($customer = mysqli_fetch_assoc($customersResult)) {
+        $tanggalPasang = DateTimeImmutable::createFromFormat('!Y-m-d', $customer['tanggal_pemasangan']);
+        if (!$tanggalPasang) {
+            http_response_code(500);
+            die('Tanggal pemasangan pelanggan tidak valid: ' . htmlspecialchars($customer['nama'] ?? '', ENT_QUOTES, 'UTF-8'));
+        }
+
+        $bulanTagihan = $tanggalPasang->modify('first day of next month');
+        $bulanSekarang = $hariIni->modify('first day of this month');
+        while ($bulanTagihan <= $bulanSekarang) {
+            $periodeTagihan = $bulanTagihan->format('Y-m');
+            if (isset($closedPeriods[$periodeTagihan])) {
+                $bulanTagihan = $bulanTagihan->modify('first day of next month');
+                continue;
+            }
+
+            $hariJatuhTempo = min((int) $tanggalPasang->format('j'), (int) $bulanTagihan->format('t'));
+            $tanggalJatuhTempo = $bulanTagihan->setDate(
+                (int) $bulanTagihan->format('Y'),
+                (int) $bulanTagihan->format('n'),
+                $hariJatuhTempo
+            );
+
+            if ($tanggalJatuhTempo <= $hariIni) {
+                $customerId = (int) $customer['id'];
+                $nama = $customer['nama'] ?? '';
+                $notlp = $customer['notlp'] ?? '';
+                $alamat = $customer['alamat'] ?? '';
+                $paket = $customer['paket'] ?? '';
+                $tanggalJatuhTempoString = $tanggalJatuhTempo->format('Y-m-d');
+                mysqli_stmt_bind_param(
+                    $stmt,
+                    'issssss',
+                    $customerId,
+                    $nama,
+                    $notlp,
+                    $alamat,
+                    $tanggalJatuhTempoString,
+                    $paket,
+                    $periodeTagihan
+                );
+                if (!mysqli_stmt_execute($stmt)) {
+                    http_response_code(500);
+                    die('Gagal membuat tagihan bulanan: ' . htmlspecialchars(mysqli_stmt_error($stmt), ENT_QUOTES, 'UTF-8'));
+                }
+            } elseif ($periodeTagihan === $periodeAktif) {
+                $customerId = (int) $customer['id'];
+                mysqli_stmt_bind_param($removePrematureInvoice, 'is', $customerId, $periodeTagihan);
+                if (!mysqli_stmt_execute($removePrematureInvoice)) {
+                    http_response_code(500);
+                    die('Gagal mengoreksi tagihan yang belum jatuh tempo: ' . htmlspecialchars(mysqli_stmt_error($removePrematureInvoice), ENT_QUOTES, 'UTF-8'));
+                }
+            }
+
+            $bulanTagihan = $bulanTagihan->modify('first day of next month');
+        }
     }
     mysqli_stmt_close($stmt);
+    mysqli_stmt_close($removePrematureInvoice);
 }
 
 $result = mysqli_query($conn, 'SELECT * FROM omset ORDER BY tanggal DESC, id DESC');
@@ -180,6 +273,7 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                     <span>Database</span>
                 </a>
             </li>
+            <?php include __DIR__ . '/admin_menu.php'; ?>
 
         </ul>
 
@@ -198,7 +292,7 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">admin</span>
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?= htmlspecialchars($_SESSION['username'] ?? 'Admin', ENT_QUOTES, 'UTF-8'); ?></span>
                                 <img class="img-profile rounded-circle" src="img/undraw_profile.svg">
                             </a>
                             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
@@ -225,9 +319,9 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                 <a href="export_omset.php?type=json" target="_blank" class="btn btn-info btn-sm mr-1">
                                     <i class="fas fa-code"></i> API / JSON
                                 </a>
-                                <a href="tambah_omset.php" class="btn btn-primary btn-sm">
+                                <?php if (billing_can('create')): ?><a href="tambah_omset.php" class="btn btn-primary btn-sm">
                                     <i class="fas fa-plus"></i> Tambah Omset Manual
-                                </a>
+                                </a><?php endif; ?>
                             </div>
                         </div>
                         <div class="card-body">
@@ -235,9 +329,9 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                 <div class="alert alert-<?= $messageType; ?>" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php endif; ?>
                             <?php if ($periodeDitutup): ?>
-                                <div class="alert alert-info" role="alert">Periode <?= htmlspecialchars($periodeAktif, ENT_QUOTES, 'UTF-8'); ?> sudah ditutup. Tagihan baru bulan ini tidak dibuat; data bulan sebelumnya tersedia di menu Database.</div>
+                                <div class="alert alert-info" role="alert">Periode <?= htmlspecialchars($periodeAktif, ENT_QUOTES, 'UTF-8'); ?> sudah ditutup. Tagihan baru bulan ini tidak dibuat, tetapi tunggakan tetap tersimpan dan dapat dibayar.</div>
                             <?php endif; ?>
-                            <p class="text-muted">Tagihan bulanan Rp150.000 dibuat otomatis untuk setiap pelanggan. Kolom pembayaran berisi akumulasi total yang sudah dibayar.</p>
+                            <p class="text-muted">Tagihan Rp150.000 dibuat saat jatuh tempo bulanan sesuai tanggal pemasangan. Contoh: pemasangan tanggal 12 berarti jatuh tempo setiap tanggal 12. Tagihan belum lunas tetap tersimpan setelah periode ditutup.</p>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <div class="card border-left-success shadow-sm h-100">
@@ -274,7 +368,7 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                             <th>Nominal</th>
                                             <th>Dibayar</th>
                                             <th>Status</th>
-                                            <th>Tanggal</th>
+                                            <th>Jatuh Tempo</th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
@@ -299,8 +393,7 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                             <td><span class="badge badge-<?= $statusPembayaran === 'Lunas' ? 'success' : (in_array($statusPembayaran, ['Cicil', 'Nominal belum diisi'], true) ? 'warning' : 'danger'); ?>"><?= $statusPembayaran; ?></span></td>
                                             <td><?= htmlspecialchars($row["tanggal"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td>
-                                                <?php if (!$periodeDitutup): ?>
-                                                <form method="post" action="omset.php" class="mb-2">
+                                                <?php if (billing_can('update')): ?><form method="post" action="omset.php" class="mb-2">
                                                     <input type="hidden" name="action" value="update_payment">
                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                     <input type="hidden" name="id" value="<?= (int) $row['id']; ?>">
@@ -312,12 +405,12 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                                     </div>
                                                 </form>
                                                 <?php endif; ?>
-                                                <a href="ubah_omset.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
+                                                <?php if (billing_can('update')): ?><a href="ubah_omset.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
                                                     <i class="fas fa-edit"></i> Edit
-                                                </a>
-                                                <a href="hapus_omset.php?id=<?= $row["id"]; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data omset ini?');">
+                                                </a><?php endif; ?>
+                                                <?php if (billing_can('delete')): ?><a href="hapus_omset.php?id=<?= $row["id"]; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data omset ini?');">
                                                     <i class="fas fa-trash"></i> Hapus
-                                                </a>
+                                                </a><?php endif; ?>
                                             </td>
                                         </tr>
                                         <?php endwhile; ?>

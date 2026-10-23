@@ -93,6 +93,7 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                     <span>Database</span>
                 </a>
             </li>
+            <?php include __DIR__ . '/admin_menu.php'; ?>
 
         </ul>
 
@@ -111,7 +112,7 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">admin</span>
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?= htmlspecialchars($_SESSION['username'] ?? 'Admin', ENT_QUOTES, 'UTF-8'); ?></span>
                                 <img class="img-profile rounded-circle" src="img/undraw_profile.svg">
                             </a>
                             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
@@ -138,9 +139,9 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                                 <a href="export_pengeluaran_tetap.php?type=json" target="_blank" class="btn btn-info btn-sm mr-1">
                                     <i class="fas fa-code"></i> API / JSON
                                 </a>
-                                <a href="tambah_pengeluaran_tetap.php" class="btn btn-primary btn-sm">
+                                <?php if (billing_can('create')): ?><a href="tambah_pengeluaran_tetap.php" class="btn btn-primary btn-sm">
                                     <i class="fas fa-plus"></i> Tambah Pengeluaran
-                                </a>
+                                </a><?php endif; ?>
                             </div>
                         </div>
                         <div class="card-body">
@@ -171,12 +172,12 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                                             <td><?= $row["nominal"] === null ? '' : 'Rp ' . number_format((float) $row["nominal"], 0, ',', '.'); ?></td>
                                             <td><?= htmlspecialchars($row["tanggal"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td>
-                                                <a href="ubah_pengeluaran_tetap.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
+                                                <?php if (billing_can('update')): ?><a href="ubah_pengeluaran_tetap.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
                                                     <i class="fas fa-edit"></i> Edit
-                                                </a>
-                                                <a href="hapus_pengeluaran_tetap.php?id=<?= $row["id"]; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data pengeluaran ini?');">
+                                                </a><?php endif; ?>
+                                                <?php if (billing_can('delete')): ?><a href="hapus_pengeluaran_tetap.php?id=<?= $row["id"]; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data pengeluaran ini?');">
                                                     <i class="fas fa-trash"></i> Hapus
-                                                </a>
+                                                </a><?php endif; ?>
                                             </td>
                                         </tr>
                                         <?php endwhile; ?>

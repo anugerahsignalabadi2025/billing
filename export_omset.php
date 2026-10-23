@@ -44,6 +44,16 @@ if ($type === 'excel') {
     }
     outputExcelWorkbook('data_omset_' . date('Y-m-d') . '.xls', ['ID', 'Nama', 'Nomor Telepon', 'Tagihan', 'Dibayar', 'Status', 'Tanggal'], $rows);
 } else {
+    foreach ($data as &$item) {
+        $dibayar = (float) ($item['dibayar'] ?? 0);
+        $nominal = $item['nominal'] === null ? null : (float) $item['nominal'];
+        $item['status_pembayaran'] = $nominal === null
+            ? 'Nominal belum diisi'
+            : ($dibayar >= $nominal ? 'Lunas' : ($dibayar > 0 ? 'Cicil' : 'Belum lunas'));
+        $item['sisa_tagihan'] = $nominal === null ? null : max(0, $nominal - $dibayar);
+    }
+    unset($item);
+
     header("Content-Type: application/json; charset=utf-8");
     echo json_encode([
         "status" => "success",

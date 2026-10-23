@@ -1,5 +1,8 @@
 <?php
-session_start();
+require_once __DIR__ . '/admin_helpers.php';
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
 if (!empty($_SESSION['authenticated'])) {
     header('Location: dashboard.php');
@@ -12,7 +15,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if ($username !== '') {
+    if ($username !== '' && $username !== 'root') {
+        $connection = billing_db_connect();
+        if (billing_admin_table_exists($connection)) {
+            $stmt = mysqli_prepare($connection, 'SELECT id, password_hash, can_create, can_delete, can_update, is_active FROM app_admin_users WHERE username = ?');
+            if (!$stmt) {
+                mysqli_close($connection);
+                http_response_code(500);
+                die('Gagal memeriksa akun admin.');
+            }
+            mysqli_stmt_bind_param($stmt, 's', $username);
+            if (!mysqli_stmt_execute($stmt)) {
+                mysqli_stmt_close($stmt);
+                mysqli_close($connection);
+                http_response_code(500);
+                die('Gagal memeriksa akun admin.');
+            }
+            $result = mysqli_stmt_get_result($stmt);
+            $admin = mysqli_fetch_assoc($result);
+            mysqli_stmt_close($stmt);
+            mysqli_close($connection);
+
+            if ($admin && (int) $admin['is_active'] === 1 && password_verify($password, $admin['password_hash'])) {
+                session_regenerate_id(true);
+                $_SESSION['authenticated'] = true;
+                $_SESSION['username'] = $username;
+                $_SESSION['admin_user_id'] = (int) $admin['id'];
+                $_SESSION['permissions'] = [
+                    'create' => (bool) $admin['can_create'],
+                    'delete' => (bool) $admin['can_delete'],
+                    'update' => (bool) $admin['can_update'],
+                ];
+                $lastSeenConnection = billing_db_connect();
+                $lastSeenStmt = mysqli_prepare($lastSeenConnection, 'UPDATE app_admin_users SET last_seen_at = NOW() WHERE id = ?');
+                if (!$lastSeenStmt) {
+                    mysqli_close($lastSeenConnection);
+                    http_response_code(500);
+                    die('Gagal memperbarui last online admin.');
+                }
+                $adminId = (int) $admin['id'];
+                mysqli_stmt_bind_param($lastSeenStmt, 'i', $adminId);
+                if (!mysqli_stmt_execute($lastSeenStmt)) {
+                    mysqli_stmt_close($lastSeenStmt);
+                    mysqli_close($lastSeenConnection);
+                    http_response_code(500);
+                    die('Gagal memperbarui last online admin.');
+                }
+                mysqli_stmt_close($lastSeenStmt);
+                mysqli_close($lastSeenConnection);
+                billing_log_activity($username, 'Login berhasil', 'login.php', null, $adminId);
+                header('Location: dashboard.php');
+                exit;
+            }
+        } else {
+            mysqli_close($connection);
+        }
+    } elseif ($username === 'root') {
         try {
             $connection = mysqli_connect('localhost', $username, $password, 'billing_asa');
         } catch (mysqli_sql_exception $exception) {
@@ -24,12 +82,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             session_regenerate_id(true);
             $_SESSION['authenticated'] = true;
             $_SESSION['username'] = $username;
+            $_SESSION['is_superadmin'] = true;
+            billing_log_activity($username, 'Login berhasil', 'login.php');
             header('Location: dashboard.php');
             exit;
         }
     }
 
-    $login_error = 'Username atau password MySQL tidak valid, atau database billing_asa tidak dapat diakses.';
+    $login_error = 'Username atau password tidak valid, atau akun admin sedang dinonaktifkan.';
 }
 ?>
 <!DOCTYPE html>
@@ -104,12 +164,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <form class="user" method="post" action="login.php">
                                         <div class="form-group">
                                             <input type="text" class="form-control form-control-user"
-                                                id="username" name="username" placeholder="Username MySQL"
-                                                autocomplete="username" value="root" required>
+                                                id="username" name="username" placeholder="Username"
+                                                autocomplete="username" required>
                                         </div>
                                         <div class="form-group">
                                             <input type="password" class="form-control form-control-user"
-                                                id="password" name="password" placeholder="Password MySQL"
+                                                id="password" name="password" placeholder="Password"
                                                 autocomplete="current-password">
                                         </div>
                                         <button type="submit" class="btn btn-primary btn-user btn-block">

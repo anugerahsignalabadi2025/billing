@@ -32,9 +32,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'close
             }
             mysqli_stmt_close($closeStmt);
 
+            $revenueArchiveStmt = mysqli_prepare($conn, "INSERT INTO arsip_bulanan (periode_arsip, jenis_data, data_id, pelanggan_id, periode_tagihan, nama, notlp, alamat, paket, nominal, dibayar, tanggal)
+                SELECT ?, 'omset', id, customer_id, periode, nama, notlp, alamat, paket, nominal, dibayar, tanggal
+                FROM omset
+                WHERE periode = ? OR (periode IS NULL AND DATE_FORMAT(tanggal, '%Y-%m') = ?)");
+            if (!$revenueArchiveStmt) {
+                throw new RuntimeException('Gagal menyiapkan arsip omset.');
+            }
+            mysqli_stmt_bind_param($revenueArchiveStmt, 'sss', $periodeAktif, $periodeAktif, $periodeAktif);
+            if (!mysqli_stmt_execute($revenueArchiveStmt)) {
+                throw new RuntimeException('Gagal menyimpan arsip omset.');
+            }
+            mysqli_stmt_close($revenueArchiveStmt);
+
             $archiveQueries = [
-                "INSERT INTO arsip_bulanan (periode_arsip, jenis_data, data_id, pelanggan_id, periode_tagihan, nama, notlp, alamat, paket, nominal, dibayar, tanggal)
-                 SELECT ?, 'omset', id, customer_id, periode, nama, notlp, alamat, paket, nominal, dibayar, tanggal FROM omset",
                 "INSERT INTO arsip_bulanan (periode_arsip, jenis_data, data_id, nama_pengeluaran, keterangan, nominal, tanggal)
                  SELECT ?, 'pengeluaran_tetap', id, nama_pengeluaran, keterangan, nominal, tanggal FROM pengeluaran_tetap",
                 "INSERT INTO arsip_bulanan (periode_arsip, jenis_data, data_id, nama_pengeluaran, keterangan, nominal, tanggal)
@@ -52,14 +63,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'close
                 mysqli_stmt_close($archiveStmt);
             }
 
-            foreach (['omset', 'pengeluaran_tetap', 'pengeluaran_takterduga'] as $table) {
+            $deletePaidStmt = mysqli_prepare($conn, "DELETE FROM omset
+                WHERE (periode = ? OR (periode IS NULL AND DATE_FORMAT(tanggal, '%Y-%m') = ?))
+                AND nominal IS NOT NULL AND dibayar >= nominal");
+            if (!$deletePaidStmt) {
+                throw new RuntimeException('Gagal menyiapkan pembersihan tagihan lunas.');
+            }
+            mysqli_stmt_bind_param($deletePaidStmt, 'ss', $periodeAktif, $periodeAktif);
+            if (!mysqli_stmt_execute($deletePaidStmt)) {
+                throw new RuntimeException('Gagal menghapus tagihan lunas periode ini.');
+            }
+            mysqli_stmt_close($deletePaidStmt);
+
+            foreach (['pengeluaran_tetap', 'pengeluaran_takterduga'] as $table) {
                 if (!mysqli_query($conn, "DELETE FROM `$table`")) {
                     throw new RuntimeException('Gagal mengosongkan data operasional bulan ini.');
                 }
             }
 
             mysqli_commit($conn);
-            $message = "Periode $periodeAktif berhasil diarsipkan dan data operasional sudah dikosongkan. Tunggakan hanya tersimpan di arsip dan tidak dibawa ke tagihan bulan depan.";
+            $message = "Periode $periodeAktif berhasil diarsipkan. Pengeluaran dan tagihan yang sudah lunas dikosongkan; tagihan belum lunas atau cicilan tetap tersimpan di Omset agar dapat ditagih dan dibayar pada periode berikutnya.";
         } catch (Throwable $exception) {
             mysqli_rollback($conn);
             $message = $exception instanceof RuntimeException
@@ -137,6 +160,7 @@ $archiveTotals = mysqli_fetch_assoc($archiveTotalsResult);
             <li class="nav-item"><a class="nav-link" href="odp.php"><i class="fas fa-fw fa-sitemap"></i><span>ODP</span></a></li>
             <li class="nav-item"><a class="nav-link" href="acs.php"><i class="fas fa-fw fa-server"></i><span>ACS</span></a></li>
             <li class="nav-item active"><a class="nav-link" href="database.php"><i class="fas fa-fw fa-database"></i><span>Database</span></a></li>
+            <?php include __DIR__ . '/admin_menu.php'; ?>
         </ul>
 
         <div id="content-wrapper" class="d-flex flex-column">
@@ -156,14 +180,16 @@ $archiveTotals = mysqli_fetch_assoc($archiveTotalsResult);
                         <div class="card-body">
                             <?php if ($closedPeriod): ?>
                                 <div class="alert alert-success mb-0">Periode ini sudah diarsipkan pada <?= htmlspecialchars($closedPeriod['ditutup_pada'], ENT_QUOTES, 'UTF-8'); ?>. Data pelanggan tetap disimpan; tagihan bulan ini tidak dibuat kembali.</div>
-                            <?php else: ?>
-                                <p>Tagihan, cicilan, dan seluruh pengeluaran aktif akan disalin ke arsip, lalu dikosongkan. Data pelanggan tidak dihapus. Tagihan yang belum lunas atau masih dicicil tetap tercatat di tabel arsip, ditandai merah atau kuning, dan tidak dibawa ke bulan depan.</p>
+                            <?php elseif (billing_can('update')): ?>
+                                <p>Tagihan periode ini dan seluruh pengeluaran aktif akan disalin ke arsip. Pengeluaran dan tagihan yang sudah lunas dikosongkan, sedangkan tagihan belum lunas atau masih dicicil tetap tersimpan di Omset agar bisa dibayar setelah tutup periode. Tunggakan diberi warna merah dan cicilan warna kuning.</p>
                                 <form method="post" onsubmit="return confirm('Arsipkan dan kosongkan semua omset serta pengeluaran aktif untuk tutup bulan? Data pelanggan tidak dihapus.');">
                                     <input type="hidden" name="action" value="close_month">
                                     <input type="hidden" name="periode" value="<?= htmlspecialchars($periodeAktif, ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                     <button type="submit" class="btn btn-danger"><i class="fas fa-archive"></i> Arsipkan dan Tutup Bulan</button>
                                 </form>
+                            <?php else: ?>
+                                <p class="mb-0">Periode belum ditutup. Anda tidak memiliki izin UPDATE untuk menutup periode.</p>
                             <?php endif; ?>
                         </div>
                     </div>
