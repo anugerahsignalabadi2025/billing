@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
-$conn = mysqli_connect("localhost", "root", "", "billing_asa"); 
+$conn = mysqli_connect(BILLING_DB_HOST, BILLING_DB_USER, BILLING_DB_PASSWORD, BILLING_DB_NAME);
 
 if (!$conn) {
     die("Koneksi database gagal: " . mysqli_connect_error());

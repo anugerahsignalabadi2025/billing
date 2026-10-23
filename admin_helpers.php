@@ -1,8 +1,32 @@
 <?php
+$billingDbConfigPath = __DIR__ . '/db_config.local.php';
+if (!is_file($billingDbConfigPath)) {
+    http_response_code(500);
+    die('Konfigurasi database lokal tidak ditemukan.');
+}
+
+$billingDbConfig = require $billingDbConfigPath;
+if (!is_array($billingDbConfig)) {
+    http_response_code(500);
+    die('Konfigurasi database lokal tidak valid.');
+}
+
+foreach (['host', 'username', 'password', 'database'] as $configKey) {
+    if (!isset($billingDbConfig[$configKey]) || !is_string($billingDbConfig[$configKey])) {
+        http_response_code(500);
+        die('Konfigurasi database lokal tidak lengkap.');
+    }
+}
+
+define('BILLING_DB_HOST', $billingDbConfig['host']);
+define('BILLING_DB_USER', $billingDbConfig['username']);
+define('BILLING_DB_PASSWORD', $billingDbConfig['password']);
+define('BILLING_DB_NAME', $billingDbConfig['database']);
+
 function billing_db_connect()
 {
     mysqli_report(MYSQLI_REPORT_OFF);
-    $connection = mysqli_connect('localhost', 'root', '', 'billing_asa');
+    $connection = mysqli_connect(BILLING_DB_HOST, BILLING_DB_USER, BILLING_DB_PASSWORD, BILLING_DB_NAME);
     if (!$connection) {
         http_response_code(500);
         die('Koneksi database gagal: ' . htmlspecialchars(mysqli_connect_error(), ENT_QUOTES, 'UTF-8'));

@@ -1,11 +1,13 @@
 <?php
 // Konfigurasi Database
-$host     = 'localhost';
-$dbname   = 'billing_asa';
-$username = 'root';
-$password = '';
+require_once __DIR__ . '/admin_helpers.php';
 
 try {
+    $host = BILLING_DB_HOST;
+    $dbname = BILLING_DB_NAME;
+    $username = BILLING_DB_USER;
+    $password = BILLING_DB_PASSWORD;
+
     // Membuat koneksi menggunakan PDO
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     

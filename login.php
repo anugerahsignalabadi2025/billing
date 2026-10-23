@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($username === 'root') {
         try {
-            $connection = mysqli_connect('localhost', $username, $password, 'billing_asa');
+            $connection = mysqli_connect(BILLING_DB_HOST, $username, $password, BILLING_DB_NAME);
         } catch (mysqli_sql_exception $exception) {
             $connection = false;
         }
