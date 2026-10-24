@@ -3,7 +3,7 @@
 $host     = 'localhost';
 $dbname   = 'billing_asa';
 $username = 'root';
-$password = '';
+$password = 'maruto33';
 
 try {
     // Membuat koneksi menggunakan PDO

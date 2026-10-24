@@ -2,7 +2,7 @@
 function billing_db_connect()
 {
     mysqli_report(MYSQLI_REPORT_OFF);
-    $connection = mysqli_connect('localhost', 'root', '', 'billing_asa');
+    $connection = mysqli_connect('localhost', 'root', 'maruto33', 'billing_asa');
     if (!$connection) {
         http_response_code(500);
         die('Koneksi database gagal: ' . htmlspecialchars(mysqli_connect_error(), ENT_QUOTES, 'UTF-8'));

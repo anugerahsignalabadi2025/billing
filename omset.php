@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
-$conn = mysqli_connect("localhost", "root", "", "billing_asa");
+$conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 if (!$conn) {
     http_response_code(500);
     die('Koneksi database gagal: ' . htmlspecialchars(mysqli_connect_error(), ENT_QUOTES, 'UTF-8'));

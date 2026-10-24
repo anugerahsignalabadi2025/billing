@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
-$conn = mysqli_connect("localhost", "root", "", "billing_asa");
+$conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 
 $result = mysqli_query($conn, "SELECT * FROM pengeluaran_takterduga");
 $totalResult = mysqli_query($conn, "SELECT COALESCE(SUM(nominal), 0) AS total_nominal FROM pengeluaran_takterduga");

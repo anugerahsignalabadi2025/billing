@@ -4,7 +4,7 @@ header('Location: dashboard.php');
 exit;
 ?>
 <!-- <?php
-$conn = mysqli_connect("localhost", "root", "", "billing_asa");
+$conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 
 $query_pelanggan = mysqli_query($conn, "SELECT COUNT(*) as total FROM datapelangganasa");
 $data_pelanggan = mysqli_fetch_assoc($query_pelanggan);

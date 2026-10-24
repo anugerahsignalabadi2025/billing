@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
-$conn = mysqli_connect("localhost", "root", "", "billing_asa"); 
+$conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa"); 
 
 $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
 

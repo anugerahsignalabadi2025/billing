@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
-$conn = mysqli_connect("localhost", "root", "", "billing_asa");
+$conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 
 if (isset($_POST["submit"])) {
     $nama = trim($_POST["nama"] ?? "");
