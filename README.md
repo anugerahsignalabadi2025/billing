@@ -1,0 +1,502 @@
+# WhatsApp Bot Base
+
+Bot WhatsApp berbasis **Node.js** dan **Baileys** dengan sistem plugin otomatis, hot-reload tanpa restart, button interaktif, jadibot, dan struktur yang mudah dikembangkan.
+
+> Dibuat oleh **Haris Sfx** — [GitHub](https://github.com/harissfx/basebot-wa)
+
+---
+
+## Fitur Unggulan
+
+- **Hot-reload otomatis** — edit file command, langsung aktif tanpa restart bot
+- **Plugin system** — tambah/hapus file command, otomatis terdaftar
+- **JadiBot** — kloning bot ke nomor lain via pairing code
+- **Button interaktif** — quick reply, URL, call, copy, list/dropdown
+- **Media lokal** — sistem `getImage()` untuk gambar lokal yang simpel
+- **Multi-level owner** — Super Owner, Co-Owner, User
+- **Mode self/public** — bisa diubah via command tanpa restart
+- **Auto join channel** — bot otomatis join channel WA saat connect
+- **LID support** — handle sistem LID terbaru WhatsApp
+- **Anti-spam cooldown** — jeda 5 detik antar command per user
+- **Welcome/Goodbye** — pesan otomatis saat member masuk/keluar grup
+- **Antilink** — auto hapus pesan berisi link di grup
+- **AFK** — status AFK dengan auto-reply saat di-mention
+
+---
+
+## Prasyarat
+
+- **Node.js** v18 atau lebih baru → [Download](https://nodejs.org)
+- **npm** (sudah termasuk bersama Node.js)
+- Akun **WhatsApp** aktif
+
+---
+
+## Instalasi
+
+```bash
+# 1. Clone project
+git clone https://github.com/harissfx/basebot-wa.git
+cd basebot-wa
+
+# 2. Install dependencies
+npm install
+
+# 3. Jalankan bot
+node index.js
+```
+
+Saat pertama kali jalan, bot akan minta nomor HP:
+
+```
+📱 Masukkan Nomor WhatsApp: 628xxxxxxxxxx
+```
+
+Masukkan nomor format `628xxx` (tanpa `+`, spasi, atau strip). Bot akan tampilkan **Pairing Code** — masukkan di WhatsApp → **Linked Devices → Link with phone number**.
+
+---
+
+## 📁 Struktur Project
+
+```
+whatsapp-bot/
+├── index.js                        # Entry point — koneksi Baileys, jadibot
+├── package.json
+├── lib/                            # Library utilitas eksternal
+│   ├── ffmpeg.js                   # Helper konversi media (FFmpeg)
+│   ├── funData.js                  # Data fun dan game
+│   ├── license.js                  # [OBFUSCATED]fitur extra tapi beli licensinya du
+│   ├── ytdlp.js                    # Helper download YouTube/TikTok
+│   ├── otp.js                      # [OBFUSCATED] Generator OTP
+│   ├── random.js                   # Fungsi random
+│   └── mone.js                     # [OBFUSCATED] Logic monetisasi link
+├── src/
+│   ├── config.js                   # Konfigurasi utama bot
+│   ├── media/
+│   │   └── logo.png                # Gambar default bot
+│   ├── database/
+│   │   ├── session/                # Sesi login bot utama (auto-generated)
+│   │   └── jadibot/                # Sesi login clone bot (auto-generated)
+│   ├── commands/                   # Semua file command di sini
+│   │   ├── general.js              # menu, ping, owner, script
+│   │   ├── sample.js               # Contoh button, list, poll, media
+│   │   ├── downloader.js           # ytmp3, ytmp4, tiktok, instagram, dll
+│   │   ├── media.js                # sticker, tourl, dll
+│   │   ├── fun.js                  # dice, coin, 8ball, joke, dll
+│   │   ├── tools.js                # cekno, cekchannel, setmode, dll
+│   │   ├── owner.js                # Fitur khusus owner
+│   │   ├── group.js                # Fitur grup (tagall, kick, promote, dll)
+│   │   ├── jadibot.js              # jadibot, listbot, stopbot
+│   │   └── extra.js                # afk, gp, shortlink, sholat
+│   ├── handlers/
+│   │   └── messageHandler.js       # Routing & parsing pesan masuk
+│   └── utils/
+│       ├── PluginLoader.js         # Sistem plugin & hot-reload
+│       ├── helper.js               # Fungsi utilitas umum + getImage()
+│       ├── interactiveHelper.js    # Builder pesan interaktif Baileys
+│       └── fquoted.js              # Fake quoted message
+```
+
+---
+
+## Konfigurasi (`src/config.js`)
+
+Edit langsung `src/config.js` — bot **otomatis reload** tanpa restart karena dipantau oleh PluginLoader.
+
+```js
+module.exports = {
+    ownerName:  'Nama Owner',           // Nama yang tampil di menu
+    botName:    'WhatsApp Bot',         // Nama bot
+    footerTxt:  'Powered by Bot',       // Footer pesan interaktif
+    prefix:     '!',                    // Awalan command: !menu, !ping, dll
+
+    superOwner: '628xxxxxxxxxx',        // Super Owner — 1 nomor, akses penuh
+    coOwner: [                          // Co-Owner — bisa lebih dari 1
+        '628xxxxxxxxxx',
+        // '628xxxxxxxxxx',
+    ],
+
+    botMode:    'public',               // 'public' = semua | 'self' = owner only
+    autoRead:   true,                   // Auto centang biru
+    autoTyping: true,                   // Tampilkan indikator mengetik
+    authFolder: './src/database/session',
+
+    channelId:  '',                     // ID channel WA untuk auto join
+                                        // Format: '120363xxx@newsletter'
+                                        // Kosongkan jika tidak dipakai
+};
+```
+
+## Integrasi billing ISP ke WhatsApp
+
+Bot menyediakan perintah owner untuk membaca dan mengelola data pelanggan, tagihan/omset, pengeluaran tetap, dan pengeluaran tak terduga pada aplikasi PHP. Halaman ODP dan ACS di aplikasi saat ini masih placeholder, jadi belum tersedia untuk CRUD melalui bot. Pengelolaan akun admin dan tutup/arsip periode juga tidak dibuka lewat WhatsApp.
+
+Deploy `bot_api.php` ke direktori aplikasi PHP. Atur secret yang sama pada environment PHP dan file `.env` bot (jangan commit token):
+
+```dotenv
+BILLING_API_URL=https://domain-anda/bot_api.php
+BILLING_API_TOKEN=ganti-dengan-token-acak-minimal-32-karakter
+BILLING_REMINDER_TIMEZONE=Asia/Jakarta
+```
+
+Pada PHP/web server, atur environment `BILLING_BOT_API_TOKEN` dengan token yang sama. API hanya menerima HTTPS dan Bearer token; jangan gunakan endpoint HTTP untuk data pelanggan/tagihan. Setelah HTTPS dan token siap, restart bot dan tes dengan `!web api`.
+
+Perintah baca hanya untuk owner dan ditampilkan di chat pribadi; perubahan data serta pengiriman pengingat hanya untuk Super Owner:
+
+```text
+!web list pelanggan
+!web list tagihan
+!web unpaid
+!web get tagihan 123
+!web create pelanggan {"nama":"Nama","notlp":"08123456789","alamat":"Alamat","paket":"Internet","tanggal_pemasangan":"2026-01-10"}
+!web update pelanggan 123 {"paket":"Paket baru"}
+!web payment 123 75000
+!web delete pelanggan 123 KONFIRMASI
+!web remind
+!web remind send
+!web reminder on
+!web reminder off
+```
+
+Untuk pengeluaran, field JSON yang tersedia adalah `nama_pengeluaran`, `keterangan`, `nominal`, dan `tanggal`. Angka pada `!web payment` adalah total akumulasi yang sudah dibayar, bukan nominal cicilan tambahan.
+
+Pengingat otomatis nonaktif secara default. Jika diaktifkan, bot menyiapkan tagihan bulanan Rp150.000 berdasarkan tanggal pemasangan (mengikuti aturan tagihan web saat ini), lalu mengirim satu pengingat pada tanggal jatuh tempo untuk tagihan belum lunas maupun cicilan. Status pengaturan serta catatan pengiriman disimpan di `src/database/` dan tidak perlu ditambahkan ke Git. Hapus pelanggan yang masih mempunyai riwayat tagihan serta hapus tagihan bulanan otomatis ditolak oleh API.
+
+### Cara dapat Channel ID
+Gunakan command `!cekchannel https://whatsapp.com/channel/xxxxx` — bot akan tampilkan ID-nya lengkap dengan tombol copy.
+
+---
+
+## Menambah Command Baru
+
+Ada 2 cara — pilih sesuai selera:
+
+### Cara 1 — Tambah `case` di file yang sudah ada
+
+Buka salah satu file di `src/commands/`, tambah case baru di dalam `switch`:
+
+```js
+case 'halo':
+    await m.reply({ text: `👋 Halo, ${m.pushname}!` });
+    break;
+```
+
+Simpan file → bot **langsung reload otomatis** tanpa restart.
+
+### Cara 2 — Buat file command baru
+
+Buat file baru di `src/commands/namafile.js`:
+
+```js
+'use strict';
+
+const config = require('../config');
+
+const handler = async (m) => {
+    const { command, pushname } = m;
+    const p = config.prefix;
+
+    switch (command.name) {
+        case 'halo':
+            await m.reply({ text: `👋 Halo, ${pushname}!` });
+            break;
+
+        case 'bye':
+            await m.reply({ text: `👋 Sampai jumpa, ${pushname}!` });
+            break;
+    }
+};
+
+module.exports = handler;
+```
+
+Simpan file → PluginLoader **otomatis mendeteksi** file baru dan mendaftarkan semua command di dalamnya. Tidak perlu edit file lain sama sekali.
+
+---
+
+## Parameter `m` (Context Object)
+
+Setiap handler menerima satu parameter `m` yang berisi semua info dan fungsi yang dibutuhkan command.
+
+### Info Pengirim
+
+| Property | Tipe | Keterangan |
+|---|---|---|
+| `m.sender` | `string` | JID pengirim (`628xxx@s.whatsapp.net` atau `xxx@lid`) |
+| `m.senderNumber` | `string` | Nomor asli pengirim (`628xxxxxxxxxx`) |
+| `m.pushname` | `string` | Nama WA pengirim |
+| `m.isOwner` | `boolean` | Apakah pengirim owner (super atau co) |
+| `m.isSuperOwner` | `boolean` | Apakah pengirim super owner |
+| `m.isCoOwner` | `boolean` | Apakah pengirim co-owner |
+| `m.isGroup` | `boolean` | Apakah pesan dari grup |
+| `m.isMain` | `boolean` | Apakah dari bot utama (bukan clone) |
+
+### Info Pesan
+
+| Property | Tipe | Keterangan |
+|---|---|---|
+| `m.msg` | `object` | Objek pesan mentah dari Baileys |
+| `m.text` | `string` | Teks pesan lengkap |
+| `m.command.name` | `string` | Nama command yang dijalankan |
+| `m.command.args` | `string[]` | Argumen command dalam array |
+| `m.command.fullArgs` | `string` | Semua argumen dalam satu string |
+| `m.command.hasPrefix` | `boolean` | Apakah command pakai prefix |
+| `m.fakeOrder` | `object` | Fake quoted untuk tampilan pesan interaktif |
+
+### Koneksi
+
+| Property | Keterangan |
+|---|---|
+| `m.Hanz` | Objek socket Baileys — akses penuh ke semua method Baileys |
+
+### Fungsi Kirim Pesan
+
+| Fungsi | Keterangan |
+|---|---|
+| `m.reply(content)` | Kirim pesan dengan quoted ke pesan pengirim |
+| `m.replyFake(content)` | Kirim pesan dengan fake quoted |
+| `m.send(content)` | Kirim pesan tanpa quoted |
+| `m.react(emoji)` | Kasih reaksi emoji ke pesan |
+| `m.sendButtons(content)` | Kirim pesan dengan button lama |
+| `m.sendList(content)` | Kirim pesan list/dropdown |
+| `m.sendInteractive(content)` | Kirim pesan interaktif (button modern) |
+| `m.sendButtonWithImage(content)` | Kirim button dengan gambar (via URL) |
+| `m.sendInteractiveWithImage(content)` | Kirim button interaktif dengan gambar lokal/Buffer |
+
+---
+
+## Tipe Button Interaktif
+
+Digunakan di `m.sendInteractive()` dan `m.sendInteractiveWithImage()`.
+
+### `quick_reply` — Kirim pesan/command otomatis
+```js
+{ name: 'quick_reply', buttonParamsJson: JSON.stringify({
+    display_text: 'Kembali ke Menu',
+    id: 'menu'
+})}
+```
+
+### `cta_url` — Buka URL
+```js
+{ name: 'cta_url', buttonParamsJson: JSON.stringify({
+    display_text: 'Buka GitHub',
+    url: 'https://github.com/harissfx'
+})}
+```
+
+### `cta_call` — Telepon
+```js
+{ name: 'cta_call', buttonParamsJson: JSON.stringify({
+    display_text: 'Hubungi Owner',
+    phone_number: '628xxxxxxxxxx'
+})}
+```
+
+### `cta_copy` — Copy teks
+```js
+{ name: 'cta_copy', buttonParamsJson: JSON.stringify({
+    display_text: '📋 Copy Kode',
+    copy_code: 'teks-yang-dicopy'
+})}
+```
+
+### `single_select` — Dropdown/list pilihan
+```js
+{ name: 'single_select', buttonParamsJson: JSON.stringify({
+    title: 'Pilih Menu',
+    sections: [{
+        title: 'Kategori 1',
+        rows: [
+            { title: 'Pilihan A', description: 'Deskripsi A', id: 'command-a' },
+            { title: 'Pilihan B', description: 'Deskripsi B', id: 'command-b' },
+        ]
+    }]
+})}
+```
+
+### Contoh lengkap `sendInteractive`
+```js
+await m.sendInteractive({
+    text: 'Teks pesan',
+    footer: 'Footer pesan',
+    quoted: m.fakeOrder,
+    contextInfo: {
+        mentionedJid: ['0@s.whatsapp.net'],
+        forwardingScore: 111,
+        isForwarded: true,
+    },
+    buttons: [
+        { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: 'OK', id: 'ok' }) },
+        { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: 'Website', url: 'https://...' }) },
+    ]
+});
+```
+
+---
+
+## Menggunakan Gambar Lokal (`getImage`)
+
+Semua gambar disimpan di `src/media/`. Sistem `getImage()` mempermudah pemanggilan tanpa perlu path panjang.
+
+### Menambah gambar baru
+
+1. Taruh file gambar di `src/media/` (misal `banner.png`)
+2. Daftarkan di `src/utils/helper.js` bagian `MEDIA`:
+
+```js
+const MEDIA = {
+    logo:   path.join(__dirname, '../media/logo.png'),
+    banner: path.join(__dirname, '../media/banner.png'),
+};
+```
+
+### Menggunakan di command
+
+```js
+const { getImage } = require('../utils/helper');
+
+case 'kirimgambar':
+    await m.send({ image: getImage(),          caption: 'Ini logo' });
+    await m.send({ image: getImage('banner'),  caption: 'Ini banner' });
+    break;
+
+case 'buttongambar':
+    await m.sendInteractiveWithImage({
+        imageSource: getImage(),
+        text: 'Teks pesan',
+        buttons: [...]
+    });
+    break;
+```
+
+---
+
+## Sistem Level Akses
+
+| Level | Siapa | Akses |
+|---|---|---|
+| **Super Owner** | Nomor `superOwner` di config | Semua fitur termasuk jadibot & manage co-owner |
+| **Co-Owner** | Nomor di array `coOwner` | Fitur owner biasa |
+| **User** | Semua orang | Command publik saja |
+
+### Cara cek di command
+```js
+if (!m.isSuperOwner) return m.reply({ text: '❌ Khusus Super Owner!' });
+if (!m.isOwner)      return m.reply({ text: '❌ Khusus Owner!' });
+if (!m.isGroup)      return m.reply({ text: '❌ Command ini hanya untuk grup!' });
+if (!m.isMain)       return m.reply({ text: '❌ Hanya bisa dari bot utama!' });
+```
+
+---
+
+## Mode Self / Public
+
+```
+!setmode public   → semua orang bisa pakai bot
+!setmode self     → hanya owner yang bisa pakai bot
+!setmode          → lihat mode saat ini + tombol pilihan
+```
+
+---
+
+## JadiBot (Clone Bot)
+
+| Command | Keterangan |
+|---|---|
+| `!jadibot 628xxx` | Buat clone bot di nomor tersebut |
+| `!listbot` | Lihat daftar clone bot yang aktif |
+| `!stopbot 628xxx` | Matikan clone bot |
+
+Clone bot otomatis hidup kembali saat bot utama di-restart.
+
+---
+
+## Fitur Shortlink (`extra.js`)
+
+### `!shortlink` / `!short`
+Mempersingkat URL menggunakan **TinyURL** — gratis, tanpa iklan, tanpa perlu akun.
+
+```
+!shortlink https://link-panjang.com/path/yang/sangat/panjang
+```
+
+### `!gp` / `!gplink`
+Mempersingkat URL menggunakan **GPLinks** — link hasil shorten akan menampilkan halaman iklan singkat sebelum mengarahkan ke URL tujuan.
+
+```
+!gp https://link-panjang.com/path
+```
+
+> **Transparansi:** Fitur `!gp` menggunakan API key GPLinks milik developer (Haris Sfx). Setiap klik pada link yang dihasilkan akan menghasilkan pendapatan iklan yang masuk ke akun developer, bukan ke pengguna bot. Jika kamu tidak setuju dengan hal ini disable aja fitur ini
+---
+
+## Sistem Hot-Reload
+
+| Aksi | File | Efek |
+|---|---|---|
+| Edit file | `src/commands/*.js` | Reload command di file itu saja |
+| Edit file | `src/utils/*.js`, `src/handlers/*.js`, `src/config.js` | Reload **semua** command |
+| Edit file | `lib/*.js` | Reload **semua** command |
+| Tambah file baru | `src/commands/` | Command baru otomatis terdaftar |
+| Hapus file | `src/commands/` | Command otomatis terhapus dari daftar |
+
+> ⚠️ Perubahan di `index.js` **tidak** hot-reload — butuh restart manual.
+
+---
+
+## Fungsi Utilitas (`src/utils/helper.js`)
+
+```js
+const {
+    formatUptime,    // formatUptime(seconds) → '1 hari 2 jam 3 menit'
+    formatJid,       // formatJid('08xx') → '628xx@s.whatsapp.net'
+    formatBytes,     // formatBytes(1024) → '1 KB'
+    delay,           // await delay(3000) → tunggu 3 detik
+    randomString,    // randomString(8) → 'aB3xKp9z'
+    getGroupInfo,    // await getGroupInfo(Hanz, jid) → metadata grup
+    isGroupAdmin,    // await isGroupAdmin(Hanz, groupJid, userJid) → true/false
+    getImage,        // getImage('logo') → Buffer gambar
+} = require('../utils/helper');
+```
+
+---
+
+## Dependencies
+
+| Package | Kegunaan |
+|---|---|
+| `@whiskeysockets/baileys` | Library koneksi WhatsApp |
+| `@hapi/boom` | HTTP error handling |
+| `axios` | HTTP client |
+| `chalk` | Warna teks di terminal |
+| `chokidar` | Watch perubahan file (hot-reload) |
+| `figlet` | Banner ASCII saat bot start |
+| `fluent-ffmpeg` | Konversi media (sticker, audio, video) |
+| `pino` | Logger Baileys |
+| `sharp` | Proses gambar (resize, konversi) |
+| `spinnies` | Animasi spinner di terminal |
+
+---
+
+## Reset Sesi
+
+```bash
+# Bot utama
+rm -rf src/database/session
+
+# Clone bot tertentu
+rm -rf src/database/jadibot/628xxxxxxxxxx
+
+# Semua clone bot
+rm -rf src/database/jadibot
+
+# Lalu restart
+node index.js
+```
+
+---
+
+## ⚠️ Disclaimer
+
+Penggunaan bot WhatsApp di luar ketentuan resmi WhatsApp sepenuhnya menjadi tanggung jawab pengguna. Penulis tidak bertanggung jawab atas penyalahgunaan script ini.# botbangmip
