@@ -115,77 +115,6 @@ function bot_api_invoice_status(&$rows)
     unset($row);
 }
 
-function bot_api_ensure_due_invoices($connection, $dueDate)
-{
-    $monthStart = DateTimeImmutable::createFromFormat('!Y-m-d', substr($dueDate, 0, 7) . '-01');
-    $period = $monthStart->format('Y-m');
-    $closedCheck = bot_api_run_statement($connection, 'SELECT 1 FROM periode_bulanan WHERE periode = ?', 's', [$period]);
-    $isClosed = mysqli_fetch_assoc(mysqli_stmt_get_result($closedCheck)) !== null;
-    mysqli_stmt_close($closedCheck);
-    if ($isClosed) {
-        return;
-    }
-
-    $customers = mysqli_query(
-        $connection,
-        'SELECT id, nama, notlp, alamat, paket, tanggal_pemasangan FROM datapelangganasa
-         WHERE tanggal_pemasangan IS NOT NULL AND YEAR(tanggal_pemasangan) > 0'
-    );
-    if (!$customers) {
-        error_log('[bot_api] Gagal mengambil pelanggan untuk tagihan jatuh tempo: ' . mysqli_error($connection));
-        bot_api_respond(500, ['status' => 'error', 'message' => 'Gagal menyiapkan tagihan jatuh tempo.']);
-    }
-
-    $insert = mysqli_prepare(
-        $connection,
-        "INSERT INTO omset (customer_id, nama, notlp, alamat, nominal, tanggal, paket, periode, dibayar)
-         VALUES (?, ?, CAST(? AS CHAR), ?, 150000, ?, COALESCE(?, ''), ?, 0)
-         ON DUPLICATE KEY UPDATE tanggal = VALUES(tanggal)"
-    );
-    if (!$insert) {
-        mysqli_free_result($customers);
-        bot_api_respond(500, ['status' => 'error', 'message' => 'Gagal menyiapkan tagihan jatuh tempo.']);
-    }
-
-    while ($customer = mysqli_fetch_assoc($customers)) {
-        $installationDate = DateTimeImmutable::createFromFormat('!Y-m-d', $customer['tanggal_pemasangan']);
-        if (!$installationDate) {
-            mysqli_stmt_close($insert);
-            mysqli_free_result($customers);
-            error_log('[bot_api] Tanggal pemasangan pelanggan tidak valid.');
-            bot_api_respond(500, ['status' => 'error', 'message' => 'Tanggal pemasangan pelanggan tidak valid.']);
-        }
-        if ($installationDate->modify('first day of next month') > $monthStart) {
-            continue;
-        }
-
-        $day = min((int) $installationDate->format('j'), (int) $monthStart->format('t'));
-        $calculatedDueDate = $monthStart
-            ->setDate((int) $monthStart->format('Y'), (int) $monthStart->format('n'), $day)
-            ->format('Y-m-d');
-        if ($calculatedDueDate !== $dueDate) {
-            continue;
-        }
-
-        $customerId = (int) $customer['id'];
-        $name = $customer['nama'] ?? '';
-        $phone = $customer['notlp'] ?? '';
-        $address = $customer['alamat'] ?? '';
-        $package = $customer['paket'] ?? '';
-        mysqli_stmt_bind_param($insert, 'issssss', $customerId, $name, $phone, $address, $calculatedDueDate, $package, $period);
-        if (!mysqli_stmt_execute($insert)) {
-            $error = mysqli_stmt_error($insert);
-            mysqli_stmt_close($insert);
-            mysqli_free_result($customers);
-            error_log('[bot_api] Gagal membuat tagihan jatuh tempo: ' . $error);
-            bot_api_respond(500, ['status' => 'error', 'message' => 'Gagal membuat tagihan jatuh tempo.']);
-        }
-    }
-
-    mysqli_stmt_close($insert);
-    mysqli_free_result($customers);
-}
-
 $requestToken = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
 if (preg_match('/^Bearer\s+(.+)$/i', $requestToken, $tokenMatch) !== 1) {
     bot_api_respond(401, ['status' => 'error', 'message' => 'Token API tidak ditemukan.']);
@@ -247,13 +176,7 @@ $fields = $entityConfig['fields'];
 $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 
 if ($apiAction === 'ensure_due') {
-    $dueDate = (string) ($_GET['due'] ?? '');
-    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $dueDate);
-    if (!$date || $date->format('Y-m-d') !== $dueDate) {
-        bot_api_respond(400, ['status' => 'error', 'message' => 'Tanggal jatuh tempo harus berformat YYYY-MM-DD.']);
-    }
-    bot_api_ensure_due_invoices($connection, $dueDate);
-    bot_api_respond(200, ['status' => 'success', 'message' => 'Tagihan jatuh tempo sudah disiapkan.']);
+    bot_api_respond(410, ['status' => 'error', 'message' => 'Pembuatan tagihan otomatis telah dinonaktifkan.']);
 }
 
 if ($method === 'GET') {

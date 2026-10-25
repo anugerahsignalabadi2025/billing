@@ -3,7 +3,7 @@ require_once __DIR__ . '/auth.php';
 
 $conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa"); 
 
-$result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
+$result = mysqli_query($conn, "SELECT * FROM datapelangganasa ORDER BY id ASC");
 
 ?>
 
@@ -143,10 +143,10 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="dataTable" data-sequential-number="true" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
+                                            <th>No.</th>
                                             <th>Nama</th>
                                             <th>Nomor Telepon</th>
                                             <th>Alamat</th>
@@ -158,7 +158,7 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
                                     <tbody>
                                         <?php while($row = mysqli_fetch_assoc($result)): ?>
                                         <tr>
-                                            <td><?= $row["id"]; ?></td>
+                                            <td data-order="<?= (int) $row['id']; ?>">0</td>
                                             <td><?= htmlspecialchars($row["nama"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= htmlspecialchars((string) ($row["notlp"] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= htmlspecialchars($row["alamat"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
@@ -225,7 +225,7 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa");
     <script src="js/sb-admin-2.min.js"></script>
     <script src="vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script src="js/demo/datatables-demo.js?v=2"></script>
+    <script src="js/demo/datatables-demo.js?v=3"></script>
 
 </body>
 

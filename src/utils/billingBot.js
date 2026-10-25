@@ -200,15 +200,6 @@ async function sendDueDateReminders() {
     global.billingReminderRunning = true;
     try {
         const dueDate = getJakartaDate();
-        if (global.billingReminderGenerationDate !== dueDate) {
-            await requestApi({
-                method: 'POST',
-                entity: 'invoices',
-                query: { action: 'ensure_due', due: dueDate },
-                body: {},
-            });
-            global.billingReminderGenerationDate = dueDate;
-        }
         const result = await requestApi({
             entity: 'invoices',
             query: { status: 'unpaid', due: dueDate },

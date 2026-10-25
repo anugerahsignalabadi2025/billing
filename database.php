@@ -203,8 +203,8 @@ $archiveTotals = mysqli_fetch_assoc($archiveTotalsResult);
                         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Riwayat Arsip</h6></div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                    <thead><tr><th>Periode Arsip</th><th>Jenis</th><th>Nama / Rincian</th><th>No. Telepon</th><th>Tagihan</th><th>Dibayar</th><th>Status</th><th>Tanggal</th><th>Diarsipkan</th></tr></thead>
+                                <table class="table table-bordered" id="dataTable" data-sequential-number="true" width="100%" cellspacing="0">
+                                    <thead><tr><th>No.</th><th>Periode Arsip</th><th>Jenis</th><th>Nama / Rincian</th><th>No. Telepon</th><th>Tagihan</th><th>Dibayar</th><th>Status</th><th>Tanggal</th><th>Diarsipkan</th></tr></thead>
                                     <tbody>
                                         <?php while ($row = mysqli_fetch_assoc($archiveResult)): ?>
                                             <?php
@@ -222,6 +222,7 @@ $archiveTotals = mysqli_fetch_assoc($archiveTotalsResult);
                                                 }
                                             ?>
                                             <tr class="<?= $warnaBaris; ?>">
+                                                <td data-order="<?= (int) $row['id']; ?>">0</td>
                                                 <td><?= htmlspecialchars($row['periode_arsip'], ENT_QUOTES, 'UTF-8'); ?></td>
                                                 <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['jenis_data'])), ENT_QUOTES, 'UTF-8'); ?></td>
                                                 <td><?= htmlspecialchars($row['nama'] ?? $row['nama_pengeluaran'] ?? '-', ENT_QUOTES, 'UTF-8'); ?><?= $row['keterangan'] ? ' - ' . htmlspecialchars($row['keterangan'], ENT_QUOTES, 'UTF-8') : ''; ?></td>
@@ -249,7 +250,7 @@ $archiveTotals = mysqli_fetch_assoc($archiveTotalsResult);
     <script src="js/sb-admin-2.min.js"></script>
     <script src="vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="vendor/datatables/dataTables.bootstrap4.min.js"></script>
-    <script src="js/demo/datatables-demo.js?v=2"></script>
+    <script src="js/demo/datatables-demo.js?v=3"></script>
 </body>
 
 </html>

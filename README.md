@@ -160,7 +160,7 @@ Perintah baca hanya untuk owner dan ditampilkan di chat pribadi; perubahan data 
 
 Untuk pengeluaran, field JSON yang tersedia adalah `nama_pengeluaran`, `keterangan`, `nominal`, dan `tanggal`. Angka pada `!web payment` adalah total akumulasi yang sudah dibayar, bukan nominal cicilan tambahan.
 
-Pengingat otomatis nonaktif secara default. Jika diaktifkan, bot menyiapkan tagihan bulanan Rp150.000 berdasarkan tanggal pemasangan (mengikuti aturan tagihan web saat ini), lalu mengirim satu pengingat pada tanggal jatuh tempo untuk tagihan belum lunas maupun cicilan. Status pengaturan serta catatan pengiriman disimpan di `src/database/` dan tidak perlu ditambahkan ke Git. Hapus pelanggan yang masih mempunyai riwayat tagihan serta hapus tagihan bulanan otomatis ditolak oleh API.
+Pembuatan tagihan bulanan otomatis telah dinonaktifkan. Tagihan yang dihapus tidak akan dibuat ulang saat halaman Omset dibuka atau saat bot berjalan. Tagihan perlu ditambahkan secara manual melalui halaman atau API. Jika pengingat otomatis diaktifkan, bot hanya mengirim pengingat untuk tagihan yang sudah ada dan belum lunas pada tanggal jatuh tempo; bot tidak membuat tagihan. Status pengaturan serta catatan pengiriman disimpan di `src/database/` dan tidak perlu ditambahkan ke Git.
 
 ### Cara dapat Channel ID
 Gunakan command `!cekchannel https://whatsapp.com/channel/xxxxx` — bot akan tampilkan ID-nya lengkap dengan tombol copy.

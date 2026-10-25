@@ -373,9 +373,9 @@ case 'myid': {
                 `• \`${p}web remind\` — pratinjau broadcast tagihan\n` +
                 `• \`${p}web remind send\` — kirim pengingat manual\n` +
                 `• \`${p}web reminder <on|off|status>\`\n\n` +
-                `Data pelanggan: nama, notlp, alamat, paket, tanggal_pemasangan.\n` +
+                `Data pelanggan: nama, notlp, ip, alamat, paket, tanggal_pemasangan.\n` +
                 `Data tagihan: nama, notlp, nominal, tanggal, dibayar, dan field omset lain.\n` +
-                `Contoh: \`${p}web create pelanggan {"nama":"Budi","notlp":"08123456789","paket":"Internet","tanggal_pemasangan":"2026-01-10"}\`\n` +
+                `Contoh: \`${p}web create pelanggan {"nama":"Budi","notlp":"08123456789","ip":"10.10.10.10","tanggal_pemasangan":"2026-01-10"}\`\n` +
                 `Semua perubahan dan pengiriman pesan hanya dapat dilakukan Super Owner.`;
 
             if (['help', 'menu'].includes(action)) {

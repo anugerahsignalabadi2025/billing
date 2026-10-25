@@ -151,10 +151,10 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                                 </div>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <table class="table table-bordered" id="dataTable" data-sequential-number="true" width="100%" cellspacing="0">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
+                                            <th>No.</th>
                                             <th>Nama Pengeluaran</th>
                                             <th>Keterangan</th>
                                             <th>Nominal</th>
@@ -165,7 +165,7 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
                                     <tbody>
                                         <?php while($row = mysqli_fetch_assoc($result)): ?>
                                         <tr>
-                                            <td><?= $row["id"]; ?></td>
+                                            <td data-order="<?= (int) $row['id']; ?>">0</td>
                                             <td><?= htmlspecialchars($row["nama_pengeluaran"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= htmlspecialchars($row["keterangan"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= $row["nominal"] === null ? '' : 'Rp ' . number_format((float) $row["nominal"], 0, ',', '.'); ?></td>
@@ -235,7 +235,7 @@ $totalNominal = mysqli_fetch_assoc($totalResult)['total_nominal'];
     <script src="vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="vendor/datatables/dataTables.bootstrap4.min.js"></script>
 
-    <script src="js/demo/datatables-demo.js?v=2"></script>
+    <script src="js/demo/datatables-demo.js?v=3"></script>
 
 </body>
 
