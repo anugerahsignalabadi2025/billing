@@ -1,3 +1,5 @@
 /.env
+/node_modules/
 /src/database/billing-bot-settings.json
 /src/database/billing-reminder-state.json
+/src/database/session/

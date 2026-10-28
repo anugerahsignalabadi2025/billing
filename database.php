@@ -63,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'close
                 mysqli_stmt_close($archiveStmt);
             }
 
+            // Hanya hapus tagihan Lunas; cicilan dan tagihan belum lunas tetap di omset.
             $deletePaidStmt = mysqli_prepare($conn, "DELETE FROM omset
                 WHERE (periode = ? OR (periode IS NULL AND DATE_FORMAT(tanggal, '%Y-%m') = ?))
                 AND nominal IS NOT NULL AND dibayar >= nominal");
@@ -182,7 +183,7 @@ $archiveTotals = mysqli_fetch_assoc($archiveTotalsResult);
                                 <div class="alert alert-success mb-0">Periode ini sudah diarsipkan pada <?= htmlspecialchars($closedPeriod['ditutup_pada'], ENT_QUOTES, 'UTF-8'); ?>. Data pelanggan tetap disimpan; tagihan bulan ini tidak dibuat kembali.</div>
                             <?php elseif (billing_can('update')): ?>
                                 <p>Tagihan periode ini dan seluruh pengeluaran aktif akan disalin ke arsip. Pengeluaran dan tagihan yang sudah lunas dikosongkan, sedangkan tagihan belum lunas atau masih dicicil tetap tersimpan di Omset agar bisa dibayar setelah tutup periode. Tunggakan diberi warna merah dan cicilan warna kuning.</p>
-                                <form method="post" onsubmit="return confirm('Arsipkan dan kosongkan semua omset serta pengeluaran aktif untuk tutup bulan? Data pelanggan tidak dihapus.');">
+                                <form method="post" onsubmit="return confirm('Arsipkan omset dan pengeluaran aktif? Hanya tagihan LUNAS yang dihapus dari omset. Tagihan CICIL/BELUM LUNAS dan data pelanggan tetap disimpan. Pengeluaran aktif akan dikosongkan.');">
                                     <input type="hidden" name="action" value="close_month">
                                     <input type="hidden" name="periode" value="<?= htmlspecialchars($periodeAktif, ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">

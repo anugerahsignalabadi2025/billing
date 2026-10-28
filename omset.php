@@ -16,13 +16,18 @@ $messageType = 'success';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_payment') {
     $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     $dibayar = $_POST['dibayar'] ?? '';
+    $metodeInput = $_POST['metode_pembayaran'] ?? '';
+    $catatanInput = $_POST['catatan'] ?? '';
+    $metadataValid = is_string($metodeInput) && is_string($catatanInput);
+    $metodePembayaran = $metadataValid ? trim($metodeInput) : '';
+    $catatan = $metadataValid ? trim($catatanInput) : '';
     $confirmation = $_POST['confirm_payment_update'] ?? '';
 
-    if (!hash_equals($csrfToken, $_POST['csrf_token'] ?? '') || !$id || ($dibayar !== '' && (!is_numeric($dibayar) || (float) $dibayar < 0)) || !in_array($confirmation, ['', 'yes'], true)) {
+    if (!hash_equals($csrfToken, $_POST['csrf_token'] ?? '') || !$id || ($dibayar !== '' && (!is_numeric($dibayar) || (float) $dibayar < 0)) || !$metadataValid || strlen($metodePembayaran) > 100 || !in_array($confirmation, ['', 'yes'], true)) {
         $message = 'Data pembayaran tidak valid. Silakan muat ulang halaman dan coba lagi.';
         $messageType = 'danger';
     } else {
-        $checkStmt = mysqli_prepare($conn, 'SELECT nominal FROM omset WHERE id = ?');
+        $checkStmt = mysqli_prepare($conn, 'SELECT nominal, dibayar FROM omset WHERE id = ?');
         if (!$checkStmt) {
             http_response_code(500);
             die('Gagal memeriksa tagihan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
@@ -45,19 +50,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
             if ($dibayar !== $previousPaid) {
                 $csrfTokenForConfirm = htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8');
                 $dibayarForConfirm = htmlspecialchars((string) $dibayar, ENT_QUOTES, 'UTF-8');
+                $metodeForConfirm = htmlspecialchars($metodePembayaran, ENT_QUOTES, 'UTF-8');
+                $catatanForConfirm = htmlspecialchars($catatan, ENT_QUOTES, 'UTF-8');
                 $idForConfirm = (int) $id;
                 $previousForConfirm = number_format($previousPaid, 0, ',', '.');
                 $newForConfirm = number_format($dibayar, 0, ',', '.');
-                echo '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Konfirmasi Pembayaran</title><link href="css/sb-admin-2.min.css" rel="stylesheet"></head><body class="bg-light"><div class="container py-5"><div class="card shadow mx-auto" style="max-width: 560px"><div class="card-header font-weight-bold text-warning">Konfirmasi perubahan pembayaran</div><div class="card-body"><p>Jumlah pembayaran akan berubah dari <strong>Rp ' . $previousForConfirm . '</strong> menjadi <strong>Rp ' . $newForConfirm . '</strong>.</p><p class="text-danger">Jika tersimpan sebagai Rp0, jumlah cicilan sebelumnya akan tertimpa. Pastikan nominal yang baru sudah benar.</p><form method="post" action="omset.php"><input type="hidden" name="action" value="update_payment"><input type="hidden" name="csrf_token" value="' . $csrfTokenForConfirm . '"><input type="hidden" name="id" value="' . $idForConfirm . '"><input type="hidden" name="dibayar" value="' . $dibayarForConfirm . '"><input type="hidden" name="confirm_payment_update" value="yes"><button type="submit" class="btn btn-warning">Ya, ganti nominal</button> <a href="omset.php" class="btn btn-secondary">Batal</a></form></div></div></div></body></html>';
+                echo '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Konfirmasi Pembayaran</title><link href="css/sb-admin-2.min.css" rel="stylesheet"></head><body class="bg-light"><div class="container py-5"><div class="card shadow mx-auto" style="max-width: 560px"><div class="card-header font-weight-bold text-warning">Konfirmasi perubahan pembayaran</div><div class="card-body"><p>Jumlah pembayaran akan berubah dari <strong>Rp ' . $previousForConfirm . '</strong> menjadi <strong>Rp ' . $newForConfirm . '</strong>.</p><p class="text-danger">Jika tersimpan sebagai Rp0, jumlah cicilan sebelumnya akan tertimpa. Pastikan nominal yang baru sudah benar.</p><form method="post" action="omset.php"><input type="hidden" name="action" value="update_payment"><input type="hidden" name="csrf_token" value="' . $csrfTokenForConfirm . '"><input type="hidden" name="id" value="' . $idForConfirm . '"><input type="hidden" name="dibayar" value="' . $dibayarForConfirm . '"><input type="hidden" name="metode_pembayaran" value="' . $metodeForConfirm . '"><input type="hidden" name="catatan" value="' . $catatanForConfirm . '"><input type="hidden" name="confirm_payment_update" value="yes"><button type="submit" class="btn btn-warning">Ya, ganti nominal</button> <a href="omset.php" class="btn btn-secondary">Batal</a></form></div></div></div></body></html>';
                 exit;
             }
         } else {
-            $stmt = mysqli_prepare($conn, 'UPDATE omset SET dibayar = ? WHERE id = ?');
+            $stmt = mysqli_prepare($conn, "UPDATE omset SET dibayar = ?, metode_pembayaran = NULLIF(?, ''), catatan = NULLIF(?, '') WHERE id = ?");
             if (!$stmt) {
                 http_response_code(500);
                 die('Gagal menyiapkan pembaruan pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
             }
-            mysqli_stmt_bind_param($stmt, 'di', $dibayar, $id);
+            mysqli_stmt_bind_param($stmt, 'dssi', $dibayar, $metodePembayaran, $catatan, $id);
             if (!mysqli_stmt_execute($stmt)) {
                 http_response_code(500);
                 die('Gagal menyimpan pembayaran: ' . htmlspecialchars(mysqli_stmt_error($stmt), ENT_QUOTES, 'UTF-8'));
@@ -274,6 +281,8 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                             <th>Dibayar</th>
                                             <th>Status</th>
                                             <th>Jatuh Tempo</th>
+                                            <th>Metode</th>
+                                            <th>Catatan</th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
@@ -297,6 +306,8 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                             <td>Rp <?= number_format($jumlahDibayar, 0, ',', '.'); ?></td>
                                             <td><span class="badge badge-<?= $statusPembayaran === 'Lunas' ? 'success' : (in_array($statusPembayaran, ['Cicil', 'Nominal belum diisi'], true) ? 'warning' : 'danger'); ?>"><?= $statusPembayaran; ?></span></td>
                                             <td><?= htmlspecialchars($row["tanggal"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= htmlspecialchars($row['metode_pembayaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?= nl2br(htmlspecialchars($row['catatan'] ?? '', ENT_QUOTES, 'UTF-8')); ?></td>
                                             <td>
                                                 <?php if (billing_can('update')): ?><form method="post" action="omset.php" class="mb-2">
                                                     <input type="hidden" name="action" value="update_payment">
@@ -308,6 +319,8 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                                             <button type="submit" class="btn btn-primary">Simpan</button>
                                                         </div>
                                                     </div>
+                                                    <input type="text" name="metode_pembayaran" class="form-control form-control-sm mt-1" maxlength="100" list="metodePembayaranList" value="<?= htmlspecialchars($row['metode_pembayaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Metode pembayaran">
+                                                    <textarea name="catatan" class="form-control form-control-sm mt-1" rows="2" placeholder="Catatan"><?= htmlspecialchars($row['catatan'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                                                 </form>
                                                 <?php endif; ?>
                                                 <?php if (billing_can('update')): ?><a href="ubah_omset.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
@@ -323,6 +336,34 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                 </table>
                             </div>
                         </div>
+                        <datalist id="metodePembayaranList">
+                            <option value="Tunai">
+                            <option value="Transfer Bank">
+                            <option value="QRIS">
+                            <option value="E-Wallet">
+                            <option value="Flazz (PT Bank Central Asia Tbk / BCA)">
+                            <option value="Mandiri e-Money (PT Bank Mandiri (Persero) Tbk)">
+                            <option value="BRIZZI (PT Bank Rakyat Indonesia (Persero) Tbk)">
+                            <option value="TapCash (PT Bank Negara Indonesia (Persero) Tbk)">
+                            <option value="JakCard (PT Bank DKI)">
+                            <option value="Simas E-money (PT Bank Sinarmas)">
+                            <option value="CommuterPay (PT Kereta Commuter Indonesia)">
+                            <option value="GoPay (PT Dompet Anak Bangsa)">
+                            <option value="OVO / OVO Cash (PT Visionet Internasional)">
+                            <option value="DANA (PT Espay Debit Indonesia Koe)">
+                            <option value="ShopeePay (PT Airpay International Indonesia)">
+                            <option value="LinkAja (PT Fintek Karya Nusantara)">
+                            <option value="Sakuku (PT Bank Central Asia Tbk)">
+                            <option value="iSaku (PT Inti Dunia Sukses)">
+                            <option value="KasPro (PT Solusi Pasti Indonesia)">
+                            <option value="DOKU / DOKU Wallet (PT Nusa Satu Inti Artha)">
+                            <option value="Speed Cash (PT Bimasakti Multi Sinergi)">
+                            <option value="OttoCash (PT Transaksi Artha Gemilang)">
+                            <option value="Bluepay (PT Bluepay Digital Internasional)">
+                            <option value="Ezeelink (PT Ezeelink Indonesia)">
+                            <option value="M-Bayar (PT E2Pay Global Utama)">
+                            <option value="DUWIT (PT Cakra Ultima Sejahtera)">
+                        </datalist>
                     </div>
 
                 </div>

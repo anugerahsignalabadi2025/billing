@@ -1,6 +1,53 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
+function dashboard_package_amount($package)
+{
+    if (!is_string($package) || trim($package) === '') {
+        return 0.0;
+    }
+
+    preg_match_all('/(?:rp\s*)?(\d[\d.,]*)\s*(rb|ribu|jt|juta)?/iu', $package, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+    if (!$matches) {
+        return 0.0;
+    }
+
+    $suffixAmount = null;
+    $rupiahAmount = null;
+    foreach ($matches as $match) {
+        $suffix = strtolower($match[2][0] ?? '');
+        $hasRupiahPrefix = preg_match('/^rp\s*/iu', substr($package, $match[0][1])) === 1;
+        if (in_array($suffix, ['rb', 'ribu', 'jt', 'juta'], true)) {
+            $suffixAmount = $match;
+        } elseif ($hasRupiahPrefix) {
+            $rupiahAmount = $match;
+        }
+    }
+    if ($suffixAmount === null && $rupiahAmount === null && preg_match('/^\s*\d[\d.,]*\s*$/u', $package) !== 1) {
+        return 0.0;
+    }
+    $selected = $suffixAmount ?? $rupiahAmount ?? end($matches);
+
+    $amountText = $selected[1][0];
+    $suffix = strtolower($selected[2][0] ?? '');
+    if ($suffix === '') {
+        $amount = (float) str_replace([',', '.'], '', $amountText);
+    } else {
+        if (str_contains($amountText, '.') && str_contains($amountText, ',')) {
+            $amountText = str_replace(',', '.', str_replace('.', '', $amountText));
+        } elseif (preg_match('/[.,]\d{3}$/', $amountText) === 1) {
+            $amountText = str_replace([',', '.'], '', $amountText);
+        } else {
+            $amountText = str_replace(',', '.', $amountText);
+        }
+
+        $amount = (float) $amountText;
+        $amount *= in_array($suffix, ['rb', 'ribu'], true) ? 1000 : 1000000;
+    }
+
+    return $amount;
+}
+
 $conn = mysqli_connect('localhost', 'root', 'maruto33', 'billing_asa');
 if (!$conn) {
     http_response_code(500);
@@ -10,7 +57,7 @@ if (!$conn) {
 $queries = [
     'total_pelanggan' => 'SELECT COUNT(*) AS total FROM datapelangganasa',
     'total_tagihan' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM omset',
-    'total_omset' => 'SELECT COALESCE(SUM(dibayar), 0) AS total FROM omset',
+    'total_dibayar' => 'SELECT COALESCE(SUM(dibayar), 0) AS total FROM omset',
     'total_pengeluaran_tetap' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM pengeluaran_tetap',
     'total_pengeluaran_takterduga' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM pengeluaran_takterduga',
 ];
@@ -27,9 +74,20 @@ foreach ($queries as $key => $query) {
     mysqli_free_result($result);
 }
 
+$packagesResult = mysqli_query($conn, 'SELECT paket FROM datapelangganasa WHERE paket IS NOT NULL AND paket <> ""');
+if (!$packagesResult) {
+    http_response_code(500);
+    die('Gagal mengambil harga paket pelanggan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
+$totals['total_omset'] = 0.0;
+while ($packageRow = mysqli_fetch_assoc($packagesResult)) {
+    $totals['total_omset'] += dashboard_package_amount($packageRow['paket']);
+}
+mysqli_free_result($packagesResult);
+
 $total_pengeluaran = $totals['total_pengeluaran_tetap'] + $totals['total_pengeluaran_takterduga'];
-$total_bersih = $totals['total_omset'] - $total_pengeluaran;
-$sisa_tagihan = $totals['total_tagihan'] - $totals['total_omset'];
+$total_bersih = $totals['total_dibayar'] - $total_pengeluaran;
+$sisa_tagihan = $totals['total_tagihan'] - $totals['total_dibayar'];
 ?>
 <!DOCTYPE html>
 <html lang="id">

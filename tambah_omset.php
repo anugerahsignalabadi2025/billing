@@ -1,38 +1,55 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
+mysqli_report(MYSQLI_REPORT_OFF);
 $conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
+if (!$conn) {
+    http_response_code(500);
+    die('Koneksi database gagal: ' . htmlspecialchars(mysqli_connect_error(), ENT_QUOTES, 'UTF-8'));
+}
 
-if (isset($_POST["submit"])) {
-    $nama = trim($_POST["nama"] ?? "");
-    $notlp = trim($_POST["notlp"] ?? "");
-    $nominal = trim($_POST["nominal"] ?? "");
-    $tanggal = trim($_POST["tanggal"] ?? "");
+$nama = trim($_POST["nama"] ?? "");
+$notlp = trim($_POST["notlp"] ?? "");
+$nominalInput = trim($_POST["nominal"] ?? "");
+$tanggal = trim($_POST["tanggal"] ?? "");
+$metodeInput = $_POST["metode_pembayaran"] ?? "";
+$catatanInput = $_POST["catatan"] ?? "";
+$metadataValid = is_string($metodeInput) && is_string($catatanInput);
+$metodePembayaran = $metadataValid ? trim($metodeInput) : "";
+$catatan = $metadataValid ? trim($catatanInput) : "";
+$message = '';
+$messageType = 'danger';
 
-    $stmt = mysqli_prepare($conn, "INSERT INTO omset (nama, notlp, nominal, tanggal) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))");
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "ssss", $nama, $notlp, $nominal, $tanggal);
-    }
-
-    if ($stmt && mysqli_stmt_execute($stmt)) {
-        mysqli_stmt_close($stmt);
-        echo "
-            <script>
-                alert('Data omset berhasil ditambahkan!');
-                document.location.href = 'omset.php';
-            </script>
-        ";
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST["submit"])) {
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $tanggal);
+    if (!$metadataValid || $nama === '' || $nominalInput === '' || !is_numeric($nominalInput) || (float) $nominalInput <= 0 || strlen($metodePembayaran) > 100 ||
+        !$date || $date->format('Y-m-d') !== $tanggal) {
+        http_response_code(400);
+        $message = 'Nama, nominal lebih dari Rp0, dan tanggal yang valid wajib diisi; metode pembayaran maksimal 100 karakter.';
     } else {
-        $error = $stmt ? mysqli_stmt_error($stmt) : mysqli_error($conn);
-        if ($stmt) {
+        $nominal = (float) $nominalInput;
+        $stmt = mysqli_prepare(
+            $conn,
+            "INSERT INTO omset (customer_id, nama, notlp, alamat, nominal, tanggal, paket, periode, dibayar, metode_pembayaran, catatan)
+             VALUES (NULL, NULLIF(?, ''), NULLIF(?, ''), NULL, ?, ?, NULL, NULL, 0, NULLIF(?, ''), NULLIF(?, ''))"
+        );
+        if (!$stmt) {
+            error_log('[tambah_omset] Gagal menyiapkan insert: ' . mysqli_error($conn));
+            http_response_code(500);
+            $message = 'Data gagal disiapkan untuk disimpan. Periksa struktur tabel omset di database.';
+        } else {
+            mysqli_stmt_bind_param($stmt, 'ssdsss', $nama, $notlp, $nominal, $tanggal, $metodePembayaran, $catatan);
+            if (mysqli_stmt_execute($stmt)) {
+                mysqli_stmt_close($stmt);
+                header('Location: omset.php');
+                exit;
+            }
+
+            error_log('[tambah_omset] Gagal menyimpan data: ' . mysqli_stmt_error($stmt));
             mysqli_stmt_close($stmt);
+            http_response_code(500);
+            $message = 'Data gagal disimpan. Struktur tabel omset di server mungkin belum sesuai dengan aplikasi. Hubungi administrator dan periksa error log PHP.';
         }
-        echo "
-            <script>
-                alert(" . json_encode('Data omset gagal ditambahkan: ' . $error) . ");
-                document.location.href = 'omset.php';
-            </script>
-        ";
     }
 }
 ?>
@@ -127,22 +144,61 @@ if (isset($_POST["submit"])) {
                             <h6 class="m-0 font-weight-bold text-primary">Tambah Data Omset</h6>
                         </div>
                         <div class="card-body">
+                            <?php if ($message !== ''): ?>
+                                <div class="alert alert-<?= $messageType; ?>" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
+                            <?php endif; ?>
                             <form action="" method="post">
                                 <div class="form-group">
                                     <label for="nama">Nama</label>
-                                    <input type="text" class="form-control" name="nama" id="nama">
+                                    <input type="text" class="form-control" name="nama" id="nama" value="<?= htmlspecialchars($nama, ENT_QUOTES, 'UTF-8'); ?>" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="notlp">No. Telepon</label>
-                                    <input type="text" class="form-control" name="notlp" id="notlp">
+                                    <input type="text" class="form-control" name="notlp" id="notlp" value="<?= htmlspecialchars($notlp, ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>
-                                    <input type="number" class="form-control" name="nominal" id="nominal">
+                                    <input type="number" class="form-control" name="nominal" id="nominal" min="1" step="0.01" value="<?= htmlspecialchars($nominalInput, ENT_QUOTES, 'UTF-8'); ?>" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="tanggal">Tanggal</label>
-                                    <input type="date" class="form-control" name="tanggal" id="tanggal">
+                                    <input type="date" class="form-control" name="tanggal" id="tanggal" value="<?= htmlspecialchars($tanggal, ENT_QUOTES, 'UTF-8'); ?>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="metode_pembayaran">Metode Pembayaran</label>
+                                    <input type="text" class="form-control" name="metode_pembayaran" id="metode_pembayaran" maxlength="100" list="metodePembayaranList" value="<?= htmlspecialchars($metodePembayaran, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Tunai, Transfer Bank, QRIS">
+                                    <datalist id="metodePembayaranList">
+                                        <option value="Tunai">
+                                        <option value="Transfer Bank">
+                                        <option value="QRIS">
+                                        <option value="E-Wallet">
+                                        <option value="Flazz (PT Bank Central Asia Tbk / BCA)">
+                                        <option value="Mandiri e-Money (PT Bank Mandiri (Persero) Tbk)">
+                                        <option value="BRIZZI (PT Bank Rakyat Indonesia (Persero) Tbk)">
+                                        <option value="TapCash (PT Bank Negara Indonesia (Persero) Tbk)">
+                                        <option value="JakCard (PT Bank DKI)">
+                                        <option value="Simas E-money (PT Bank Sinarmas)">
+                                        <option value="CommuterPay (PT Kereta Commuter Indonesia)">
+                                        <option value="GoPay (PT Dompet Anak Bangsa)">
+                                        <option value="OVO / OVO Cash (PT Visionet Internasional)">
+                                        <option value="DANA (PT Espay Debit Indonesia Koe)">
+                                        <option value="ShopeePay (PT Airpay International Indonesia)">
+                                        <option value="LinkAja (PT Fintek Karya Nusantara)">
+                                        <option value="Sakuku (PT Bank Central Asia Tbk)">
+                                        <option value="iSaku (PT Inti Dunia Sukses)">
+                                        <option value="KasPro (PT Solusi Pasti Indonesia)">
+                                        <option value="DOKU / DOKU Wallet (PT Nusa Satu Inti Artha)">
+                                        <option value="Speed Cash (PT Bimasakti Multi Sinergi)">
+                                        <option value="OttoCash (PT Transaksi Artha Gemilang)">
+                                        <option value="Bluepay (PT Bluepay Digital Internasional)">
+                                        <option value="Ezeelink (PT Ezeelink Indonesia)">
+                                        <option value="M-Bayar (PT E2Pay Global Utama)">
+                                        <option value="DUWIT (PT Cakra Ultima Sejahtera)">
+                                    </datalist>
+                                </div>
+                                <div class="form-group">
+                                    <label for="catatan">Catatan</label>
+                                    <textarea class="form-control" name="catatan" id="catatan" rows="3"><?= htmlspecialchars($catatan, ENT_QUOTES, 'UTF-8'); ?></textarea>
                                 </div>
                                 <button type="submit" name="submit" class="btn btn-primary">Simpan</button>
                                 <a href="omset.php" class="btn btn-secondary">Batal</a>

@@ -51,6 +51,15 @@ function bot_api_validate_payload($entity, $payload, $allowedFields)
         }
     }
 
+    foreach (['metode_pembayaran', 'catatan'] as $textField) {
+        if (array_key_exists($textField, $payload) && $payload[$textField] !== null && !is_string($payload[$textField])) {
+            bot_api_respond(400, ['status' => 'error', 'message' => "$textField harus berupa teks."]);
+        }
+    }
+    if (isset($payload['metode_pembayaran']) && strlen($payload['metode_pembayaran']) > 100) {
+        bot_api_respond(400, ['status' => 'error', 'message' => 'metode_pembayaran maksimal 100 karakter.']);
+    }
+
     foreach (['tanggal', 'tanggal_pemasangan'] as $dateField) {
         if (array_key_exists($dateField, $payload) && $payload[$dateField] !== null && $payload[$dateField] !== '') {
             $date = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $payload[$dateField]);
@@ -141,7 +150,7 @@ $entities = [
     ],
     'invoices' => [
         'table' => 'omset',
-        'fields' => ['customer_id', 'nama', 'notlp', 'alamat', 'nominal', 'tanggal', 'paket', 'periode', 'dibayar'],
+        'fields' => ['customer_id', 'nama', 'notlp', 'alamat', 'nominal', 'tanggal', 'paket', 'periode', 'dibayar', 'metode_pembayaran', 'catatan'],
         'order' => 'tanggal DESC, id DESC',
     ],
     'fixed-expenses' => [

@@ -39,10 +39,12 @@ if ($type === 'excel') {
             $nominal,
             $dibayar,
             $status,
-            $item['tanggal']
+            $item['tanggal'],
+            $item['metode_pembayaran'],
+            $item['catatan']
         ];
     }
-    outputExcelWorkbook('data_omset_' . date('Y-m-d') . '.xls', ['ID', 'Nama', 'Nomor Telepon', 'Tagihan', 'Dibayar', 'Status', 'Tanggal'], $rows);
+    outputExcelWorkbook('data_omset_' . date('Y-m-d') . '.xls', ['ID', 'Nama', 'Nomor Telepon', 'Tagihan', 'Dibayar', 'Status', 'Jatuh Tempo', 'Metode Pembayaran', 'Catatan'], $rows);
 } else {
     foreach ($data as &$item) {
         $dibayar = (float) ($item['dibayar'] ?? 0);
