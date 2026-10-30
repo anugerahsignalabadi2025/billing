@@ -309,26 +309,26 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                             <td><?= htmlspecialchars($row['metode_pembayaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= nl2br(htmlspecialchars($row['catatan'] ?? '', ENT_QUOTES, 'UTF-8')); ?></td>
                                             <td>
-                                                <?php if (billing_can('update')): ?><form method="post" action="omset.php" class="mb-2">
+                                                <?php if (billing_can('update')): ?><form method="post" action="omset.php" id="update-payment-<?= (int) $row['id']; ?>" class="mb-2">
                                                     <input type="hidden" name="action" value="update_payment">
                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                     <input type="hidden" name="id" value="<?= (int) $row['id']; ?>">
-                                                    <div class="input-group input-group-sm">
-                                                        <input type="number" name="dibayar" class="form-control" min="0" max="<?= $nominalTagihan; ?>" step="0.01" value="<?= $jumlahDibayar; ?>" aria-label="Jumlah yang sudah dibayar">
-                                                        <div class="input-group-append">
-                                                            <button type="submit" class="btn btn-primary">Simpan</button>
-                                                        </div>
-                                                    </div>
+                                                    <input type="number" name="dibayar" class="form-control form-control-sm" min="0" max="<?= $nominalTagihan; ?>" step="0.01" value="<?= $jumlahDibayar; ?>" aria-label="Jumlah yang sudah dibayar">
                                                     <input type="text" name="metode_pembayaran" class="form-control form-control-sm mt-1" maxlength="100" list="metodePembayaranList" value="<?= htmlspecialchars($row['metode_pembayaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Metode pembayaran">
                                                     <textarea name="catatan" class="form-control form-control-sm mt-1" rows="2" placeholder="Catatan"><?= htmlspecialchars($row['catatan'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                                                 </form>
                                                 <?php endif; ?>
-                                                <?php if (billing_can('update')): ?><a href="ubah_omset.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </a><?php endif; ?>
-                                                <?php if (billing_can('delete')): ?><a href="hapus_omset.php?id=<?= $row["id"]; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data omset ini?');">
-                                                    <i class="fas fa-trash"></i> Hapus
-                                                </a><?php endif; ?>
+                                                <div class="btn-group-vertical" role="group" aria-label="Aksi omset">
+                                                    <?php if (billing_can('update')): ?>
+                                                    <button type="submit" form="update-payment-<?= (int) $row['id']; ?>" class="btn btn-primary btn-sm">Simpan</button>
+                                                    <a href="ubah_omset.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </a>
+                                                    <?php endif; ?>
+                                                    <?php if (billing_can('delete')): ?><a href="hapus_omset.php?id=<?= $row["id"]; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data omset ini?');">
+                                                        <i class="fas fa-trash"></i> Hapus
+                                                    </a><?php endif; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                         <?php endwhile; ?>
