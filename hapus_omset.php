@@ -5,7 +5,7 @@ $conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 
 $id = $_GET["id"];
 
-$invoice = mysqli_query($conn, "SELECT customer_id FROM omset WHERE id = $id");
+$invoice = mysqli_query($conn, 'SELECT customer_id FROM omset WHERE id = ' . (int) $id . billing_data_scope_sql());
 $invoiceData = mysqli_fetch_assoc($invoice);
 
 if ($invoiceData && $invoiceData['customer_id'] !== null) {
@@ -18,7 +18,7 @@ if ($invoiceData && $invoiceData['customer_id'] !== null) {
     exit;
 }
 
-$query = "DELETE FROM omset WHERE id = $id";
+$query = 'DELETE FROM omset WHERE id = ' . (int) $id . billing_data_scope_sql();
 mysqli_query($conn, $query);
 
 if (mysqli_affected_rows($conn) > 0) {

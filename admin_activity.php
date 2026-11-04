@@ -8,10 +8,59 @@ if (empty($_SESSION['is_superadmin'])) {
 
 $conn = billing_db_connect();
 billing_prepare_admin_tables($conn);
-$activityResult = mysqli_query($conn, 'SELECT username, activity, page, target_id, ip_address, created_at FROM app_admin_activity_log ORDER BY id DESC LIMIT 500');
-if (!$activityResult) {
-    http_response_code(500);
-    die('Gagal mengambil log aktivitas: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+$adminId = null;
+$adminUsername = '';
+if (array_key_exists('admin_id', $_GET)) {
+    $adminId = filter_input(INPUT_GET, 'admin_id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if (!$adminId) {
+        http_response_code(400);
+        die('Akun admin tidak valid.');
+    }
+    $adminStmt = mysqli_prepare($conn, 'SELECT username FROM app_admin_users WHERE id = ?');
+    if (!$adminStmt) {
+        http_response_code(500);
+        die('Gagal menyiapkan akun aktivitas: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+    }
+    mysqli_stmt_bind_param($adminStmt, 'i', $adminId);
+    if (!mysqli_stmt_execute($adminStmt)) {
+        $error = mysqli_stmt_error($adminStmt);
+        mysqli_stmt_close($adminStmt);
+        http_response_code(500);
+        die('Gagal mengambil akun aktivitas: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+    }
+    $adminResult = mysqli_stmt_get_result($adminStmt);
+    $admin = mysqli_fetch_assoc($adminResult);
+    mysqli_stmt_close($adminStmt);
+    if (!$admin) {
+        http_response_code(404);
+        die('Akun admin tidak ditemukan.');
+    }
+    $adminUsername = $admin['username'];
+    $activityStmt = mysqli_prepare($conn, 'SELECT username, activity, page, target_id, ip_address, created_at FROM app_admin_activity_log WHERE admin_user_id = ? ORDER BY id DESC LIMIT 500');
+    if (!$activityStmt) {
+        http_response_code(500);
+        die('Gagal menyiapkan log aktivitas: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+    }
+    mysqli_stmt_bind_param($activityStmt, 'i', $adminId);
+    if (!mysqli_stmt_execute($activityStmt)) {
+        $error = mysqli_stmt_error($activityStmt);
+        mysqli_stmt_close($activityStmt);
+        http_response_code(500);
+        die('Gagal mengambil log aktivitas: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+    }
+    $activityResult = mysqli_stmt_get_result($activityStmt);
+    if (!$activityResult) {
+        $error = mysqli_stmt_error($activityStmt);
+        mysqli_stmt_close($activityStmt);
+        http_response_code(500);
+        die('Gagal membaca log aktivitas: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+    }
+} else {
+    $activityResult = mysqli_query($conn, 'SELECT username, activity, page, target_id, ip_address, created_at FROM app_admin_activity_log ORDER BY id DESC LIMIT 500');
+    if (!$activityResult) {
+        http_response_code(500);
+        die('Gagal mengambil log aktivitas: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -39,11 +88,12 @@ if (!$activityResult) {
                     <ul class="navbar-nav ml-auto"><li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li></ul>
                 </nav>
                 <div class="container-fluid">
-                    <h1 class="h3 mb-4 text-gray-800">Log Aktivitas Admin</h1>
+                    <h1 class="h3 mb-4 text-gray-800">Log Aktivitas <?= $adminId ? 'User ' . htmlspecialchars($adminUsername, ENT_QUOTES, 'UTF-8') : 'Admin'; ?></h1>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Aktivitas terbaru</h6></div>
                         <div class="card-body">
-                            <p class="text-muted">Menampilkan maksimal 500 aktivitas terbaru. Log mencatat akun, waktu, jenis aksi, halaman, ID data terkait, dan IP. Password serta isi form tidak disimpan.</p>
+                            <p class="text-muted">Menampilkan maksimal 500 aktivitas terbaru<?= $adminId ? ' untuk akun ' . htmlspecialchars($adminUsername, ENT_QUOTES, 'UTF-8') : ''; ?>. Log mencatat akun, waktu, jenis aksi, halaman, ID data terkait, dan IP. Password serta isi form tidak disimpan.</p>
+                            <?php if ($adminId): ?><a href="admins.php" class="btn btn-secondary btn-sm mb-3">Kembali ke Kelola Admin</a><?php endif; ?>
                             <div class="table-responsive">
                                 <table class="table table-bordered">
                                     <thead><tr><th>Waktu</th><th>Admin</th><th>Aktivitas</th><th>Halaman</th><th>ID data</th><th>Alamat IP</th></tr></thead>

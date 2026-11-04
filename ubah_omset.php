@@ -5,7 +5,7 @@ $conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 
 $id = $_GET["id"];
 
-$result = mysqli_query($conn, "SELECT * FROM omset WHERE id = $id");
+$result = mysqli_query($conn, 'SELECT * FROM omset WHERE id = ' . (int) $id . billing_data_scope_sql());
 $data = mysqli_fetch_assoc($result);
 $error = '';
 
@@ -23,7 +23,7 @@ if (isset($_POST["submit"])) {
     if (!$metadataValid || strlen($metodePembayaran) > 100) {
         $error = 'Metode pembayaran harus berupa teks maksimal 100 karakter dan catatan harus berupa teks.';
     } else {
-        $query = "UPDATE omset SET nama = NULLIF(?, ''), notlp = NULLIF(?, ''), nominal = NULLIF(?, ''), tanggal = NULLIF(?, ''), dibayar = LEAST(dibayar, COALESCE(NULLIF(?, ''), 0)), metode_pembayaran = NULLIF(?, ''), catatan = NULLIF(?, '') WHERE id = ?";
+        $query = "UPDATE omset SET nama = NULLIF(?, ''), notlp = NULLIF(?, ''), nominal = NULLIF(?, ''), tanggal = NULLIF(?, ''), dibayar = LEAST(dibayar, COALESCE(NULLIF(?, ''), 0)), metode_pembayaran = NULLIF(?, ''), catatan = NULLIF(?, '') WHERE id = ?" . billing_data_scope_sql();
         $stmt = mysqli_prepare($conn, $query);
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, "sssssssi", $nama, $notlp, $nominal, $tanggal, $nominal, $metodePembayaran, $catatan, $id);

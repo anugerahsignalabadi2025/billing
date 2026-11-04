@@ -9,7 +9,7 @@ if (isset($_POST["submit"])) {
     $nominal = trim($_POST["nominal"] ?? "");
     $tanggal = trim($_POST["tanggal"] ?? "");
 
-    $stmt = mysqli_prepare($conn, "INSERT INTO pengeluaran_takterduga (nama_pengeluaran, keterangan, nominal, tanggal) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))");
+    $stmt = mysqli_prepare($conn, "INSERT INTO pengeluaran_takterduga (nama_pengeluaran, keterangan, nominal, tanggal, owner_admin_id) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), " . billing_data_owner_sql_value() . ')');
     if ($stmt) {
         mysqli_stmt_bind_param($stmt, "ssss", $nama_pengeluaran, $keterangan, $nominal, $tanggal);
     }

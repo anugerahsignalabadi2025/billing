@@ -5,7 +5,7 @@ $conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 
 $id = $_GET["id"];
 
-$result = mysqli_query($conn, "SELECT * FROM pengeluaran_takterduga WHERE id = $id");
+$result = mysqli_query($conn, 'SELECT * FROM pengeluaran_takterduga WHERE id = ' . (int) $id . billing_data_scope_sql());
 $data = mysqli_fetch_assoc($result);
 
 if (isset($_POST["submit"])) {
@@ -14,7 +14,7 @@ if (isset($_POST["submit"])) {
     $nominal = trim($_POST["nominal"] ?? "");
     $tanggal = trim($_POST["tanggal"] ?? "");
 
-    $stmt = mysqli_prepare($conn, "UPDATE pengeluaran_takterduga SET nama_pengeluaran = NULLIF(?, ''), keterangan = NULLIF(?, ''), nominal = NULLIF(?, ''), tanggal = NULLIF(?, '') WHERE id = ?");
+    $stmt = mysqli_prepare($conn, "UPDATE pengeluaran_takterduga SET nama_pengeluaran = NULLIF(?, ''), keterangan = NULLIF(?, ''), nominal = NULLIF(?, ''), tanggal = NULLIF(?, '') WHERE id = ?" . billing_data_scope_sql());
     if ($stmt) {
         mysqli_stmt_bind_param($stmt, "ssssi", $nama_pengeluaran, $keterangan, $nominal, $tanggal, $id);
     }

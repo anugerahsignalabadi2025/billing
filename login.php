@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($admin && (int) $admin['is_active'] === 1 && password_verify($password, $admin['password_hash'])) {
                 session_regenerate_id(true);
+                unset($_SESSION['is_superadmin'], $_SESSION['acting_as_admin_id'], $_SESSION['acting_as_admin_username']);
                 $_SESSION['authenticated'] = true;
                 $_SESSION['username'] = $username;
                 $_SESSION['admin_user_id'] = (int) $admin['id'];
@@ -80,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($connection) {
             mysqli_close($connection);
             session_regenerate_id(true);
+            unset($_SESSION['admin_user_id'], $_SESSION['permissions'], $_SESSION['acting_as_admin_id'], $_SESSION['acting_as_admin_username']);
             $_SESSION['authenticated'] = true;
             $_SESSION['username'] = $username;
             $_SESSION['is_superadmin'] = true;

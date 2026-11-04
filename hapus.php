@@ -5,7 +5,7 @@ $conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 
 $id = $_GET["id"];
 
-mysqli_query($conn, "DELETE FROM datapelangganasa WHERE id = $id");
+mysqli_query($conn, 'DELETE FROM datapelangganasa WHERE id = ' . (int) $id . billing_data_scope_sql());
 
 if (mysqli_affected_rows($conn) > 0) {
     echo "

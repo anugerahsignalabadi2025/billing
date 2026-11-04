@@ -20,6 +20,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrfToken, $_POST['csrf_token'] ?? '')) {
         $message = 'Permintaan tidak valid. Muat ulang halaman dan coba lagi.';
         $messageType = 'danger';
+    } elseif ($action === 'view_user') {
+        $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+        $stmt = $id ? mysqli_prepare($conn, 'SELECT id, username FROM app_admin_users WHERE id = ?') : false;
+        if (!$stmt) {
+            $message = 'User yang dipilih tidak valid.';
+            $messageType = 'danger';
+        } else {
+            mysqli_stmt_bind_param($stmt, 'i', $id);
+            if (!mysqli_stmt_execute($stmt)) {
+                $message = 'Gagal membuka data user: ' . mysqli_stmt_error($stmt);
+                $messageType = 'danger';
+                mysqli_stmt_close($stmt);
+            } else {
+                $userResult = mysqli_stmt_get_result($stmt);
+                $selectedAdmin = mysqli_fetch_assoc($userResult);
+                mysqli_stmt_close($stmt);
+                if (!$selectedAdmin) {
+                    $message = 'User tidak ditemukan.';
+                    $messageType = 'danger';
+                } else {
+                    $_SESSION['acting_as_admin_id'] = (int) $id;
+                    $_SESSION['acting_as_admin_username'] = $selectedAdmin['username'];
+                    header('Location: dashboard.php');
+                    exit;
+                }
+            }
+        }
+    } elseif ($action === 'stop_view_user') {
+        unset($_SESSION['acting_as_admin_id']);
+        unset($_SESSION['acting_as_admin_username']);
+        header('Location: admins.php');
+        exit;
     } elseif ($action === 'save') {
         $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0;
         $username = trim($_POST['username'] ?? '');
@@ -93,20 +125,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = 'Admin yang dipilih tidak valid.';
             $messageType = 'danger';
         } else {
-            $stmt = mysqli_prepare($conn, 'DELETE FROM app_admin_users WHERE id = ?');
-            if (!$stmt) {
-                http_response_code(500);
-                die('Gagal menyiapkan penghapusan admin: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+            mysqli_begin_transaction($conn);
+            $dataTables = ['datapelangganasa', 'omset', 'pengeluaran_tetap', 'pengeluaran_takterduga', 'arsip_bulanan'];
+            $deleteFailed = false;
+            foreach ($dataTables as $table) {
+                $transferStmt = mysqli_prepare($conn, "UPDATE `$table` SET owner_admin_id = NULL WHERE owner_admin_id = ?");
+                if (!$transferStmt) {
+                    $message = 'Gagal menyiapkan pemindahan data akun: ' . mysqli_error($conn);
+                    $deleteFailed = true;
+                    break;
+                }
+                mysqli_stmt_bind_param($transferStmt, 'i', $id);
+                if (!mysqli_stmt_execute($transferStmt)) {
+                    $message = 'Gagal memindahkan data akun: ' . mysqli_stmt_error($transferStmt);
+                    $deleteFailed = true;
+                    mysqli_stmt_close($transferStmt);
+                    break;
+                }
+                mysqli_stmt_close($transferStmt);
             }
-            mysqli_stmt_bind_param($stmt, 'i', $id);
-            if (!mysqli_stmt_execute($stmt)) {
-                $message = 'Gagal menghapus admin: ' . mysqli_stmt_error($stmt);
+            if (!$deleteFailed) {
+                $stmt = mysqli_prepare($conn, 'DELETE FROM app_admin_users WHERE id = ?');
+                if (!$stmt) {
+                    $message = 'Gagal menyiapkan penghapusan admin: ' . mysqli_error($conn);
+                    $deleteFailed = true;
+                } else {
+                    mysqli_stmt_bind_param($stmt, 'i', $id);
+                    if (!mysqli_stmt_execute($stmt)) {
+                        $message = 'Gagal menghapus admin: ' . mysqli_stmt_error($stmt);
+                        $deleteFailed = true;
+                    } elseif (mysqli_stmt_affected_rows($stmt) !== 1) {
+                        $message = 'Akun admin tidak ditemukan.';
+                        $deleteFailed = true;
+                    }
+                    mysqli_stmt_close($stmt);
+                }
+            }
+            if ($deleteFailed || !mysqli_commit($conn)) {
+                mysqli_rollback($conn);
+                $message = $message !== '' ? $message : 'Gagal menyelesaikan penghapusan akun.';
                 $messageType = 'danger';
             } else {
                 header('Location: admins.php?deleted=1');
                 exit;
             }
-            mysqli_stmt_close($stmt);
         }
     }
 }
@@ -167,6 +229,17 @@ if (!$adminsResult) {
                 </nav>
                 <div class="container-fluid">
                     <h1 class="h3 mb-4 text-gray-800">Kelola Admin / Teknisi</h1>
+                    <?php if (isset($_SESSION['acting_as_admin_id'])): ?>
+                        <div class="alert alert-info d-flex justify-content-between align-items-center">
+                            <span>Sedang melihat data akun <?= htmlspecialchars($_SESSION['acting_as_admin_username'] ?? '', ENT_QUOTES, 'UTF-8'); ?>.</span>
+                            <form method="post" class="mb-0">
+                                <input type="hidden" name="action" value="stop_view_user">
+                                <input type="hidden" name="id" value="<?= (int) $_SESSION['acting_as_admin_id']; ?>">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                <button type="submit" class="btn btn-sm btn-secondary">Kembali ke admin utama</button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
                     <?php if ($message !== ''): ?><div class="alert alert-<?= $messageType; ?>"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><?= $editAdmin ? 'Ubah Admin' : 'Tambah Admin'; ?></h6></div>
@@ -179,9 +252,9 @@ if (!$adminsResult) {
                                 <div class="form-group"><label for="password">Password<?= $editAdmin ? ' (kosongkan jika tidak ingin mengganti)' : ''; ?></label><input class="form-control" type="password" id="password" name="password" minlength="8" autocomplete="new-password" <?= $editAdmin ? '' : 'required'; ?>></div>
                                 <p class="font-weight-bold mb-2">Allow Permission</p>
                                 <div class="custom-control custom-checkbox"><input class="custom-control-input" type="checkbox" id="readPermission" checked disabled><label class="custom-control-label" for="readPermission">READ (selalu diizinkan)</label></div>
-                                <div class="custom-control custom-checkbox"><input class="custom-control-input" type="checkbox" id="createPermission" name="can_create" <?= !empty($editAdmin['can_create']) ? 'checked' : ''; ?>><label class="custom-control-label" for="createPermission">CREATE</label></div>
-                                <div class="custom-control custom-checkbox"><input class="custom-control-input" type="checkbox" id="deletePermission" name="can_delete" <?= !empty($editAdmin['can_delete']) ? 'checked' : ''; ?>><label class="custom-control-label" for="deletePermission">DELETE</label></div>
-                                <div class="custom-control custom-checkbox mb-3"><input class="custom-control-input" type="checkbox" id="updatePermission" name="can_update" <?= !empty($editAdmin['can_update']) ? 'checked' : ''; ?>><label class="custom-control-label" for="updatePermission">UPDATE</label></div>
+                                <div class="custom-control custom-checkbox"><input class="custom-control-input" type="checkbox" id="createPermission" name="can_create" <?= !$editAdmin || !empty($editAdmin['can_create']) ? 'checked' : ''; ?>><label class="custom-control-label" for="createPermission">CREATE</label></div>
+                                <div class="custom-control custom-checkbox"><input class="custom-control-input" type="checkbox" id="deletePermission" name="can_delete" <?= !$editAdmin || !empty($editAdmin['can_delete']) ? 'checked' : ''; ?>><label class="custom-control-label" for="deletePermission">DELETE</label></div>
+                                <div class="custom-control custom-checkbox mb-3"><input class="custom-control-input" type="checkbox" id="updatePermission" name="can_update" <?= !$editAdmin || !empty($editAdmin['can_update']) ? 'checked' : ''; ?>><label class="custom-control-label" for="updatePermission">UPDATE</label></div>
                                 <div class="custom-control custom-checkbox mb-3"><input class="custom-control-input" type="checkbox" id="activePermission" name="is_active" <?= !$editAdmin || !empty($editAdmin['is_active']) ? 'checked' : ''; ?>><label class="custom-control-label" for="activePermission">Akun aktif</label></div>
                                 <button type="submit" class="btn btn-primary"><?= $editAdmin ? 'Simpan Perubahan' : 'Buat Admin'; ?></button>
                                 <?php if ($editAdmin): ?><a href="admins.php" class="btn btn-secondary">Batal</a><?php endif; ?>
@@ -191,7 +264,12 @@ if (!$adminsResult) {
                     <div class="card shadow mb-4"><div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Daftar Admin</h6></div><div class="card-body"><div class="table-responsive">
                         <table class="table table-bordered"><thead><tr><th>Username</th><th>Akun</th><th>Last online</th><th>READ</th><th>CREATE</th><th>DELETE</th><th>UPDATE</th><th>Dibuat</th><th>Aksi</th></tr></thead><tbody>
                             <?php while ($admin = mysqli_fetch_assoc($adminsResult)): ?>
-                                <tr><td><?= htmlspecialchars($admin['username'], ENT_QUOTES, 'UTF-8'); ?></td><td><?= (int) $admin['is_active'] ? ((int) $admin['is_online'] ? '<span class="text-success font-weight-bold">Online</span>' : 'Aktif') : 'Nonaktif'; ?></td><td><?= $admin['last_seen_at'] ? htmlspecialchars($admin['last_seen_at'], ENT_QUOTES, 'UTF-8') : 'Belum pernah login'; ?></td><td>Ya</td><td><?= (int) $admin['can_create'] ? 'Ya' : 'Tidak'; ?></td><td><?= (int) $admin['can_delete'] ? 'Ya' : 'Tidak'; ?></td><td><?= (int) $admin['can_update'] ? 'Ya' : 'Tidak'; ?></td><td><?= htmlspecialchars($admin['created_at'], ENT_QUOTES, 'UTF-8'); ?></td><td><a class="btn btn-warning btn-sm" href="admins.php?edit=<?= (int) $admin['id']; ?>">Edit</a> <form method="post" class="d-inline" onsubmit="return confirm('Hapus admin ini?');"><input type="hidden" name="action" value="delete"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="id" value="<?= (int) $admin['id']; ?>"><button type="submit" class="btn btn-danger btn-sm">Hapus</button></form></td></tr>
+                                <tr><td><?= htmlspecialchars($admin['username'], ENT_QUOTES, 'UTF-8'); ?></td><td><?= (int) $admin['is_active'] ? ((int) $admin['is_online'] ? '<span class="text-success font-weight-bold">Online</span>' : 'Aktif') : 'Nonaktif'; ?></td><td><?= $admin['last_seen_at'] ? htmlspecialchars($admin['last_seen_at'], ENT_QUOTES, 'UTF-8') : 'Belum pernah login'; ?></td><td>Ya</td><td><?= (int) $admin['can_create'] ? 'Ya' : 'Tidak'; ?></td><td><?= (int) $admin['can_delete'] ? 'Ya' : 'Tidak'; ?></td><td><?= (int) $admin['can_update'] ? 'Ya' : 'Tidak'; ?></td><td><?= htmlspecialchars($admin['created_at'], ENT_QUOTES, 'UTF-8'); ?></td><td class="text-nowrap">
+                                    <form method="post" class="d-inline"><input type="hidden" name="action" value="view_user"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="id" value="<?= (int) $admin['id']; ?>"><button type="submit" class="btn btn-primary btn-sm">Lihat Data</button></form>
+                                    <a class="btn btn-info btn-sm" href="admin_activity.php?admin_id=<?= (int) $admin['id']; ?>">Aktivitas</a>
+                                    <a class="btn btn-warning btn-sm" href="admins.php?edit=<?= (int) $admin['id']; ?>">Edit</a>
+                                    <form method="post" class="d-inline" onsubmit="return confirm('Hapus admin ini?');"><input type="hidden" name="action" value="delete"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="id" value="<?= (int) $admin['id']; ?>"><button type="submit" class="btn btn-danger btn-sm">Hapus</button></form>
+                                </td></tr>
                             <?php endwhile; ?>
                         </tbody></table>
                     </div></div></div>

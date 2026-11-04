@@ -16,7 +16,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $paket = trim($_POST["paket"] ?? "");
     $tanggal_pemasangan = trim($_POST["tanggal_pemasangan"] ?? "");
 
-    $query = "INSERT INTO datapelangganasa (nama, notlp, alamat, paket, tanggal_pemasangan) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))";
+    $query = "INSERT INTO datapelangganasa (nama, notlp, alamat, paket, tanggal_pemasangan, owner_admin_id) VALUES (NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), " . billing_data_owner_sql_value() . ')';
     $stmt = mysqli_prepare($conn, $query);
 
     if ($stmt) {

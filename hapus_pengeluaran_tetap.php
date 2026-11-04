@@ -5,7 +5,7 @@ $conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa");
 
 $id = $_GET["id"];
 
-$query = "DELETE FROM pengeluaran_tetap WHERE id = $id";
+$query = 'DELETE FROM pengeluaran_tetap WHERE id = ' . (int) $id . billing_data_scope_sql();
 mysqli_query($conn, $query);
 
 if (mysqli_affected_rows($conn) > 0) {

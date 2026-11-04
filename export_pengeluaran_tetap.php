@@ -10,7 +10,7 @@ if (!$conn) {
 }
 
 $type = $_GET['type'] ?? 'json';
-$result = mysqli_query($conn, "SELECT * FROM pengeluaran_tetap");
+$result = mysqli_query($conn, 'SELECT * FROM pengeluaran_tetap WHERE 1=1' . billing_data_scope_sql());
 if (!$result) {
     http_response_code(500);
     die("Gagal mengambil data pengeluaran tetap: " . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));

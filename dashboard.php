@@ -55,11 +55,11 @@ if (!$conn) {
 }
 
 $queries = [
-    'total_pelanggan' => 'SELECT COUNT(*) AS total FROM datapelangganasa',
-    'total_tagihan' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM omset',
-    'total_dibayar' => 'SELECT COALESCE(SUM(dibayar), 0) AS total FROM omset',
-    'total_pengeluaran_tetap' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM pengeluaran_tetap',
-    'total_pengeluaran_takterduga' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM pengeluaran_takterduga',
+    'total_pelanggan' => 'SELECT COUNT(*) AS total FROM datapelangganasa WHERE 1=1' . billing_data_scope_sql(),
+    'total_tagihan' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM omset WHERE 1=1' . billing_data_scope_sql(),
+    'total_dibayar' => 'SELECT COALESCE(SUM(dibayar), 0) AS total FROM omset WHERE 1=1' . billing_data_scope_sql(),
+    'total_pengeluaran_tetap' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM pengeluaran_tetap WHERE 1=1' . billing_data_scope_sql(),
+    'total_pengeluaran_takterduga' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM pengeluaran_takterduga WHERE 1=1' . billing_data_scope_sql(),
 ];
 
 $totals = [];
@@ -74,7 +74,7 @@ foreach ($queries as $key => $query) {
     mysqli_free_result($result);
 }
 
-$packagesResult = mysqli_query($conn, 'SELECT paket FROM datapelangganasa WHERE paket IS NOT NULL AND paket <> ""');
+$packagesResult = mysqli_query($conn, 'SELECT paket FROM datapelangganasa WHERE paket IS NOT NULL AND paket <> ""' . billing_data_scope_sql());
 if (!$packagesResult) {
     http_response_code(500);
     die('Gagal mengambil harga paket pelanggan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));

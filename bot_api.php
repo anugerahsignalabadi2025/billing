@@ -179,6 +179,7 @@ if ($apiAction !== '' && ($method !== 'POST' || $entity !== 'invoices' || $apiAc
 }
 
 $connection = billing_db_connect();
+billing_prepare_data_ownership($connection);
 $entityConfig = $entities[$entity];
 $table = $entityConfig['table'];
 $fields = $entityConfig['fields'];
@@ -189,7 +190,7 @@ if ($apiAction === 'ensure_due') {
 }
 
 if ($method === 'GET') {
-    $where = [];
+    $where = ['owner_admin_id IS NULL'];
     $types = '';
     $values = [];
     if ($id !== false && $id !== null) {
@@ -259,7 +260,7 @@ if ($method === 'POST') {
             bot_api_respond(400, ['status' => 'error', 'message' => 'Jumlah dibayar tidak boleh melebihi nominal tagihan.']);
         }
         if (!empty($payload['customer_id'])) {
-            $customerCheck = bot_api_run_statement($connection, 'SELECT id FROM datapelangganasa WHERE id = ?', 'i', [$payload['customer_id']]);
+            $customerCheck = bot_api_run_statement($connection, 'SELECT id FROM datapelangganasa WHERE id = ? AND owner_admin_id IS NULL', 'i', [$payload['customer_id']]);
             $customerExists = mysqli_fetch_assoc(mysqli_stmt_get_result($customerCheck)) !== null;
             mysqli_stmt_close($customerCheck);
             if (!$customerExists) {
@@ -269,10 +270,10 @@ if ($method === 'POST') {
     }
     $columns = array_keys($payload);
     $placeholders = implode(', ', array_fill(0, count($columns), '?'));
-    $columnSql = implode(', ', array_map(static fn($column) => "`$column`", $columns));
+    $columnSql = implode(', ', array_map(static fn($column) => "`$column`", $columns)) . ', owner_admin_id';
     $types = str_repeat('s', count($columns));
     $values = array_values($payload);
-    $statement = bot_api_run_statement($connection, "INSERT INTO `$table` ($columnSql) VALUES ($placeholders)", $types, $values);
+    $statement = bot_api_run_statement($connection, "INSERT INTO `$table` ($columnSql) VALUES ($placeholders, NULL)", $types, $values);
     $newId = mysqli_insert_id($connection);
     mysqli_stmt_close($statement);
     bot_api_respond(201, ['status' => 'success', 'id' => $newId, 'message' => 'Data berhasil dibuat.']);
@@ -285,7 +286,7 @@ if ($id === false || $id === null) {
 if ($method === 'PUT') {
     $payload = bot_api_validate_payload($entity, $body, $fields);
     if ($entity === 'invoices' && (array_key_exists('dibayar', $payload) || array_key_exists('nominal', $payload))) {
-        $check = bot_api_run_statement($connection, 'SELECT nominal, dibayar FROM omset WHERE id = ?', 'i', [$id]);
+        $check = bot_api_run_statement($connection, 'SELECT nominal, dibayar FROM omset WHERE id = ? AND owner_admin_id IS NULL', 'i', [$id]);
         $invoice = mysqli_fetch_assoc(mysqli_stmt_get_result($check));
         mysqli_stmt_close($check);
         if (!$invoice) {
@@ -298,7 +299,7 @@ if ($method === 'PUT') {
         }
     }
     if ($entity === 'invoices' && array_key_exists('customer_id', $payload) && !empty($payload['customer_id'])) {
-        $customerCheck = bot_api_run_statement($connection, 'SELECT id FROM datapelangganasa WHERE id = ?', 'i', [$payload['customer_id']]);
+        $customerCheck = bot_api_run_statement($connection, 'SELECT id FROM datapelangganasa WHERE id = ? AND owner_admin_id IS NULL', 'i', [$payload['customer_id']]);
         $customerExists = mysqli_fetch_assoc(mysqli_stmt_get_result($customerCheck)) !== null;
         mysqli_stmt_close($customerCheck);
         if (!$customerExists) {
@@ -310,11 +311,11 @@ if ($method === 'PUT') {
     $assignments = implode(', ', array_map(static fn($column) => "`$column` = ?", $columns));
     $values = array_values($payload);
     $values[] = $id;
-    $statement = bot_api_run_statement($connection, "UPDATE `$table` SET $assignments WHERE id = ?", str_repeat('s', count($columns)) . 'i', $values);
+    $statement = bot_api_run_statement($connection, "UPDATE `$table` SET $assignments WHERE id = ? AND owner_admin_id IS NULL", str_repeat('s', count($columns)) . 'i', $values);
     $affected = mysqli_stmt_affected_rows($statement);
     mysqli_stmt_close($statement);
     if ($affected === 0) {
-        $check = bot_api_run_statement($connection, "SELECT id FROM `$table` WHERE id = ?", 'i', [$id]);
+        $check = bot_api_run_statement($connection, "SELECT id FROM `$table` WHERE id = ? AND owner_admin_id IS NULL", 'i', [$id]);
         $exists = mysqli_fetch_assoc(mysqli_stmt_get_result($check)) !== null;
         mysqli_stmt_close($check);
         if (!$exists) {
@@ -326,7 +327,7 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     if ($entity === 'invoices') {
-        $check = bot_api_run_statement($connection, 'SELECT customer_id FROM omset WHERE id = ?', 'i', [$id]);
+        $check = bot_api_run_statement($connection, 'SELECT customer_id FROM omset WHERE id = ? AND owner_admin_id IS NULL', 'i', [$id]);
         $invoice = mysqli_fetch_assoc(mysqli_stmt_get_result($check));
         mysqli_stmt_close($check);
         if (!$invoice) {
@@ -337,7 +338,7 @@ if ($method === 'DELETE') {
         }
     }
     if ($entity === 'customers') {
-        $check = bot_api_run_statement($connection, 'SELECT COUNT(*) AS total FROM omset WHERE customer_id = ?', 'i', [$id]);
+        $check = bot_api_run_statement($connection, 'SELECT COUNT(*) AS total FROM omset WHERE customer_id = ? AND owner_admin_id IS NULL', 'i', [$id]);
         $linked = mysqli_fetch_assoc(mysqli_stmt_get_result($check));
         mysqli_stmt_close($check);
         if ((int) $linked['total'] > 0) {
@@ -345,7 +346,7 @@ if ($method === 'DELETE') {
         }
     }
 
-    $statement = bot_api_run_statement($connection, "DELETE FROM `$table` WHERE id = ?", 'i', [$id]);
+    $statement = bot_api_run_statement($connection, "DELETE FROM `$table` WHERE id = ? AND owner_admin_id IS NULL", 'i', [$id]);
     $affected = mysqli_stmt_affected_rows($statement);
     mysqli_stmt_close($statement);
     if ($affected < 1) {

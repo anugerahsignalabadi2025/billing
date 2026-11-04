@@ -7,10 +7,9 @@ if (!$conn) {
     die('Koneksi database gagal: ' . htmlspecialchars(mysqli_connect_error(), ENT_QUOTES, 'UTF-8'));
 }
 
-$periodeAktif = date('Y-m');
 $csrfToken = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32));
 $_SESSION['csrf_token'] = $csrfToken;
-$message = '';
+$message = isset($_GET['copied']) ? 'Data berhasil disalin sebagai data baru milik admin utama.' : '';
 $messageType = 'success';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_payment') {
@@ -22,17 +21,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $metodePembayaran = $metadataValid ? trim($metodeInput) : '';
     $catatan = $metadataValid ? trim($catatanInput) : '';
     $confirmation = $_POST['confirm_payment_update'] ?? '';
+    $markPaid = ($_POST['mark_paid'] ?? '') === 'yes';
 
-    if (!hash_equals($csrfToken, $_POST['csrf_token'] ?? '') || !$id || ($dibayar !== '' && (!is_numeric($dibayar) || (float) $dibayar < 0)) || !$metadataValid || strlen($metodePembayaran) > 100 || !in_array($confirmation, ['', 'yes'], true)) {
+    if (!hash_equals($csrfToken, $_POST['csrf_token'] ?? '') || !$id || (!$markPaid && $dibayar !== '' && (!is_numeric($dibayar) || (float) $dibayar < 0)) || !$metadataValid || strlen($metodePembayaran) > 100 || !in_array($confirmation, ['', 'yes'], true)) {
         $message = 'Data pembayaran tidak valid. Silakan muat ulang halaman dan coba lagi.';
         $messageType = 'danger';
     } else {
-        $checkStmt = mysqli_prepare($conn, 'SELECT nominal, dibayar FROM omset WHERE id = ?');
+        $checkStmt = mysqli_prepare($conn, 'SELECT nominal, dibayar FROM omset WHERE id = ?' . billing_data_scope_sql());
         if (!$checkStmt) {
             http_response_code(500);
             die('Gagal memeriksa tagihan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
         }
-        $dibayar = $dibayar === '' ? 0.0 : (float) $dibayar;
         mysqli_stmt_bind_param($checkStmt, 'i', $id);
         if (!mysqli_stmt_execute($checkStmt)) {
             http_response_code(500);
@@ -42,12 +41,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         $invoice = mysqli_fetch_assoc($checkResult);
         mysqli_stmt_close($checkStmt);
 
+        if ($invoice && $invoice['nominal'] !== null) {
+            $dibayar = $markPaid ? (float) $invoice['nominal'] : ($dibayar === '' ? 0.0 : (float) $dibayar);
+        }
+
         if (!$invoice || $invoice['nominal'] === null || $dibayar > (float) $invoice['nominal']) {
             $message = 'Tagihan tidak ditemukan atau pembayaran melebihi nominal tagihan.';
             $messageType = 'danger';
-        } elseif ($confirmation !== 'yes') {
+        } else {
             $previousPaid = (float) $invoice['dibayar'];
-            if ($dibayar !== $previousPaid) {
+            if ($confirmation !== 'yes' && $dibayar !== $previousPaid) {
                 $csrfTokenForConfirm = htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8');
                 $dibayarForConfirm = htmlspecialchars((string) $dibayar, ENT_QUOTES, 'UTF-8');
                 $metodeForConfirm = htmlspecialchars($metodePembayaran, ENT_QUOTES, 'UTF-8');
@@ -58,8 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
                 echo '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Konfirmasi Pembayaran</title><link href="css/sb-admin-2.min.css" rel="stylesheet"></head><body class="bg-light"><div class="container py-5"><div class="card shadow mx-auto" style="max-width: 560px"><div class="card-header font-weight-bold text-warning">Konfirmasi perubahan pembayaran</div><div class="card-body"><p>Jumlah pembayaran akan berubah dari <strong>Rp ' . $previousForConfirm . '</strong> menjadi <strong>Rp ' . $newForConfirm . '</strong>.</p><p class="text-danger">Jika tersimpan sebagai Rp0, jumlah cicilan sebelumnya akan tertimpa. Pastikan nominal yang baru sudah benar.</p><form method="post" action="omset.php"><input type="hidden" name="action" value="update_payment"><input type="hidden" name="csrf_token" value="' . $csrfTokenForConfirm . '"><input type="hidden" name="id" value="' . $idForConfirm . '"><input type="hidden" name="dibayar" value="' . $dibayarForConfirm . '"><input type="hidden" name="metode_pembayaran" value="' . $metodeForConfirm . '"><input type="hidden" name="catatan" value="' . $catatanForConfirm . '"><input type="hidden" name="confirm_payment_update" value="yes"><button type="submit" class="btn btn-warning">Ya, ganti nominal</button> <a href="omset.php" class="btn btn-secondary">Batal</a></form></div></div></div></body></html>';
                 exit;
             }
-        } else {
-            $stmt = mysqli_prepare($conn, "UPDATE omset SET dibayar = ?, metode_pembayaran = NULLIF(?, ''), catatan = NULLIF(?, '') WHERE id = ?");
+
+            $stmt = mysqli_prepare($conn, "UPDATE omset SET dibayar = ?, metode_pembayaran = NULLIF(?, ''), catatan = NULLIF(?, '') WHERE id = ?" . billing_data_scope_sql());
             if (!$stmt) {
                 http_response_code(500);
                 die('Gagal menyiapkan pembaruan pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
@@ -75,23 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     }
 }
 
-$closedStmt = mysqli_prepare($conn, 'SELECT 1 FROM periode_bulanan WHERE periode = ?');
-if (!$closedStmt) {
-    http_response_code(500);
-    die('Gagal memeriksa periode tagihan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
-}
-mysqli_stmt_bind_param($closedStmt, 's', $periodeAktif);
-mysqli_stmt_execute($closedStmt);
-$closedResult = mysqli_stmt_get_result($closedStmt);
-$periodeDitutup = mysqli_fetch_assoc($closedResult) !== null;
-mysqli_stmt_close($closedStmt);
-
-$result = mysqli_query($conn, 'SELECT * FROM omset ORDER BY tanggal DESC, id DESC');
+$result = mysqli_query($conn, 'SELECT * FROM omset WHERE 1=1' . billing_data_scope_sql() . ' ORDER BY tanggal DESC, id DESC');
 if (!$result) {
     http_response_code(500);
     die('Gagal mengambil data omset: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
 }
-$totalResult = mysqli_query($conn, 'SELECT COALESCE(SUM(nominal), 0) AS total_nominal, COALESCE(SUM(dibayar), 0) AS total_dibayar FROM omset');
+$totalResult = mysqli_query($conn, 'SELECT COALESCE(SUM(nominal), 0) AS total_nominal, COALESCE(SUM(dibayar), 0) AS total_dibayar FROM omset WHERE 1=1' . billing_data_scope_sql());
 if (!$totalResult) {
     http_response_code(500);
     die('Gagal menghitung total omset: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
@@ -240,10 +232,7 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                             <?php if ($message !== ''): ?>
                                 <div class="alert alert-<?= $messageType; ?>" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php endif; ?>
-                            <?php if ($periodeDitutup): ?>
-                                <div class="alert alert-info" role="alert">Periode <?= htmlspecialchars($periodeAktif, ENT_QUOTES, 'UTF-8'); ?> sudah ditutup. Tunggakan yang masih tercatat tetap dapat dibayar.</div>
-                            <?php endif; ?>
-                            <p class="text-muted">Tambahkan tagihan secara manual melalui tombol Tambah Omset. Tagihan belum lunas tetap tersimpan setelah periode ditutup.</p>
+                            <p class="text-muted">Tambahkan tagihan secara manual melalui tombol Tambah Omset. Tagihan cicilan dan belum lunas tetap tersimpan setelah rekap.</p>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <div class="card border-left-success shadow-sm h-100">
@@ -319,8 +308,22 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                                 </form>
                                                 <?php endif; ?>
                                                 <div class="btn-group-vertical" role="group" aria-label="Aksi omset">
+                                                    <?php if (!empty($_SESSION['is_superadmin']) && $row['owner_admin_id'] !== null): ?>
+                                                    <form method="post" action="copy_user_data.php" onsubmit="return confirm('Salin baris ini ke data admin utama? Jika diulang, salinan baru akan dibuat.');">
+                                                        <input type="hidden" name="entity" value="omset">
+                                                        <input type="hidden" name="id" value="<?= (int) $row['id']; ?>">
+                                                        <input type="hidden" name="source_owner_id" value="<?= (int) $row['owner_admin_id']; ?>">
+                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <button type="submit" class="btn btn-info btn-sm"><i class="fas fa-copy"></i> Ambil</button>
+                                                    </form>
+                                                    <?php endif; ?>
                                                     <?php if (billing_can('update')): ?>
                                                     <button type="submit" form="update-payment-<?= (int) $row['id']; ?>" class="btn btn-primary btn-sm">Simpan</button>
+                                                    <?php if ($row['nominal'] !== null): ?>
+                                                    <button type="submit" form="update-payment-<?= (int) $row['id']; ?>" name="mark_paid" value="yes" class="btn btn-success btn-sm">
+                                                        <i class="fas fa-check"></i> Lunas
+                                                    </button>
+                                                    <?php endif; ?>
                                                     <a href="ubah_omset.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </a>

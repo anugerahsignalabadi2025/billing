@@ -30,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST["submit"])) {
         $nominal = (float) $nominalInput;
         $stmt = mysqli_prepare(
             $conn,
-            "INSERT INTO omset (customer_id, nama, notlp, alamat, nominal, tanggal, paket, periode, dibayar, metode_pembayaran, catatan)
-             VALUES (NULL, NULLIF(?, ''), NULLIF(?, ''), NULL, ?, ?, NULL, NULL, 0, NULLIF(?, ''), NULLIF(?, ''))"
+            "INSERT INTO omset (customer_id, nama, notlp, alamat, nominal, tanggal, paket, periode, dibayar, metode_pembayaran, catatan, owner_admin_id)
+             VALUES (NULL, NULLIF(?, ''), NULLIF(?, ''), NULL, ?, ?, NULL, NULL, 0, NULLIF(?, ''), NULLIF(?, ''), " . billing_data_owner_sql_value() . ')'
         );
         if (!$stmt) {
             error_log('[tambah_omset] Gagal menyiapkan insert: ' . mysqli_error($conn));

@@ -14,7 +14,7 @@ if ($id === "") {
     exit;
 }
 
-$result = mysqli_query($conn, "SELECT * FROM datapelangganasa WHERE id = $id");
+$result = mysqli_query($conn, 'SELECT * FROM datapelangganasa WHERE id = ' . (int) $id . billing_data_scope_sql());
 $data = mysqli_fetch_assoc($result);
 
 if (!$data) {
@@ -36,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $paket = trim($_POST["paket"] ?? "");
     $tanggal_pemasangan = trim($_POST["tanggal_pemasangan"] ?? "");
 
-    $query = "UPDATE datapelangganasa SET nama = NULLIF(?, ''), notlp = NULLIF(?, ''), alamat = NULLIF(?, ''), paket = NULLIF(?, ''), tanggal_pemasangan = NULLIF(?, '') WHERE id = ?";
+    $query = "UPDATE datapelangganasa SET nama = NULLIF(?, ''), notlp = NULLIF(?, ''), alamat = NULLIF(?, ''), paket = NULLIF(?, ''), tanggal_pemasangan = NULLIF(?, '') WHERE id = ?" . billing_data_scope_sql();
     $stmt = mysqli_prepare($conn, $query);
 
     if ($stmt) {

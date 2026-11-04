@@ -11,7 +11,7 @@ if (!$conn) {
 
 $type = $_GET['type'] ?? 'json';
 
-$query = "SELECT * FROM pengeluaran_takterduga";
+$query = 'SELECT * FROM pengeluaran_takterduga WHERE 1=1' . billing_data_scope_sql();
 $result = mysqli_query($conn, $query);
 if (!$result) {
     http_response_code(500);

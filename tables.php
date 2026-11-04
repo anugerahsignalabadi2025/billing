@@ -3,7 +3,7 @@ require_once __DIR__ . '/auth.php';
 
 $conn = mysqli_connect("localhost", "root", "maruto33", "billing_asa"); 
 
-$result = mysqli_query($conn, "SELECT * FROM datapelangganasa ORDER BY id ASC");
+$result = mysqli_query($conn, 'SELECT * FROM datapelangganasa WHERE 1=1' . billing_data_scope_sql() . ' ORDER BY id ASC');
 
 ?>
 
@@ -126,6 +126,9 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa ORDER BY id ASC");
 
                 <div class="container-fluid">
 
+                    <?php if (isset($_GET['copied'])): ?>
+                        <div class="alert alert-success" role="alert">Data berhasil disalin sebagai data baru milik admin utama.</div>
+                    <?php endif; ?>
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 d-flex justify-content-between align-items-center">
                             <h6 class="m-0 font-weight-bold text-primary">Tabel Daftar Pelanggan</h6>
@@ -165,6 +168,15 @@ $result = mysqli_query($conn, "SELECT * FROM datapelangganasa ORDER BY id ASC");
                                             <td><?= htmlspecialchars($row["paket"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?= htmlspecialchars($row["tanggal_pemasangan"] ?? "-", ENT_QUOTES, "UTF-8"); ?></td>
                                             <td>
+                                                <?php if (!empty($_SESSION['is_superadmin']) && $row['owner_admin_id'] !== null): ?>
+                                                <form method="post" action="copy_user_data.php" class="d-inline" onsubmit="return confirm('Salin baris ini ke data admin utama? Jika diulang, salinan baru akan dibuat.');">
+                                                    <input type="hidden" name="entity" value="customer">
+                                                    <input type="hidden" name="id" value="<?= (int) $row['id']; ?>">
+                                                    <input type="hidden" name="source_owner_id" value="<?= (int) $row['owner_admin_id']; ?>">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <button type="submit" class="btn btn-info btn-sm"><i class="fas fa-copy"></i> Ambil</button>
+                                                </form>
+                                                <?php endif; ?>
                                                 <?php if (billing_can('update')): ?><a href="ubah.php?id=<?= $row["id"]; ?>" class="btn btn-warning btn-sm">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </a><?php endif; ?>
