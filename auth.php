@@ -128,7 +128,7 @@ if (!empty($_SESSION['is_superadmin']) && isset($_SESSION['acting_as_admin_id'])
 if (isset($permissionByPage[$currentPage])) {
     billing_require_permission($permissionByPage[$currentPage]);
 }
-if ($currentPage === 'omset.php' && ($_POST['action'] ?? '') === 'update_payment') {
+if ($currentPage === 'omset.php' && in_array($_POST['action'] ?? '', ['update_payment', 'add_payment'], true)) {
     billing_require_permission('update');
 }
 if ($currentPage === 'database.php' && ($_POST['action'] ?? '') === 'archive_all_paid') {
@@ -152,8 +152,10 @@ $activityByPage = [
 ];
 $activity = null;
 $targetId = $_POST['id'] ?? $_GET['id'] ?? null;
-if ($currentPage === 'omset.php' && ($_POST['action'] ?? '') === 'update_payment') {
-    $activity = 'Permintaan UPDATE pembayaran omset';
+if ($currentPage === 'omset.php' && in_array($_POST['action'] ?? '', ['update_payment', 'add_payment'], true)) {
+    $activity = ($_POST['action'] ?? '') === 'add_payment'
+        ? 'Permintaan pencatatan pembayaran omset'
+        : 'Permintaan UPDATE pembayaran omset';
 } elseif ($currentPage === 'database.php' && ($_POST['action'] ?? '') === 'archive_all_paid') {
     $activity = 'Permintaan rekap semua data lunas';
 } elseif ($currentPage === 'admins.php' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {

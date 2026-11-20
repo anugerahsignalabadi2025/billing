@@ -7,10 +7,94 @@ if (!$conn) {
     die('Koneksi database gagal: ' . htmlspecialchars(mysqli_connect_error(), ENT_QUOTES, 'UTF-8'));
 }
 
+billing_prepare_payment_records($conn);
+
 $csrfToken = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32));
 $_SESSION['csrf_token'] = $csrfToken;
 $message = isset($_GET['copied']) ? 'Data berhasil disalin sebagai data baru milik admin utama.' : '';
 $messageType = 'success';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_payment') {
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    $amountInput = $_POST['nominal_pembayaran'] ?? '';
+    $methodInput = $_POST['metode_pembayaran_baru'] ?? '';
+    $dateInput = $_POST['tanggal_pembayaran'] ?? '';
+    $paymentDate = is_string($dateInput) ? DateTimeImmutable::createFromFormat('!Y-m-d', $dateInput) : false;
+    if (!hash_equals($csrfToken, is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '') ||
+        !$id || !is_string($amountInput) || !is_numeric($amountInput) || (float) $amountInput <= 0 ||
+        !is_string($methodInput) || strlen(trim($methodInput)) > 100 ||
+        !$paymentDate || $paymentDate->format('Y-m-d') !== $dateInput) {
+        http_response_code(400);
+        $message = 'Data pembayaran tidak valid. Pastikan nominal, metode, dan tanggal sudah benar.';
+        $messageType = 'danger';
+    } else {
+        $paymentAmount = (float) $amountInput;
+        $paymentMethod = trim($methodInput);
+        if (!mysqli_begin_transaction($conn)) {
+            http_response_code(500);
+            die('Gagal memulai pencatatan pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+        }
+
+        $checkStmt = mysqli_prepare($conn, 'SELECT nominal, dibayar FROM omset WHERE id = ?' . billing_data_scope_sql() . ' FOR UPDATE');
+        if (!$checkStmt) {
+            mysqli_rollback($conn);
+            http_response_code(500);
+            die('Gagal memeriksa tagihan: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+        }
+        mysqli_stmt_bind_param($checkStmt, 'i', $id);
+        if (!mysqli_stmt_execute($checkStmt)) {
+            $error = mysqli_stmt_error($checkStmt);
+            mysqli_stmt_close($checkStmt);
+            mysqli_rollback($conn);
+            http_response_code(500);
+            die('Gagal memeriksa tagihan: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+        }
+        $checkResult = mysqli_stmt_get_result($checkStmt);
+        $invoice = mysqli_fetch_assoc($checkResult);
+        mysqli_stmt_close($checkStmt);
+        $newPaidAmount = $invoice ? (float) $invoice['dibayar'] + $paymentAmount : 0;
+
+        if (!$invoice || $invoice['nominal'] === null || $newPaidAmount > (float) $invoice['nominal']) {
+            mysqli_rollback($conn);
+            $message = 'Tagihan tidak ditemukan atau pembayaran melebihi sisa tagihan.';
+            $messageType = 'danger';
+        } else {
+            $insertStmt = mysqli_prepare($conn, "INSERT INTO omset_pembayaran (omset_id, nominal, metode_pembayaran, tanggal)
+                VALUES (?, ?, NULLIF(?, ''), ?)");
+            if (!$insertStmt) {
+                mysqli_rollback($conn);
+                http_response_code(500);
+                die('Gagal menyiapkan pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+            }
+            mysqli_stmt_bind_param($insertStmt, 'idss', $id, $paymentAmount, $paymentMethod, $dateInput);
+            if (!mysqli_stmt_execute($insertStmt)) {
+                $error = mysqli_stmt_error($insertStmt);
+                mysqli_stmt_close($insertStmt);
+                mysqli_rollback($conn);
+                http_response_code(500);
+                die('Gagal menyimpan pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+            }
+            mysqli_stmt_close($insertStmt);
+
+            $updateStmt = mysqli_prepare($conn, 'UPDATE omset SET dibayar = ?, metode_pembayaran = NULLIF(?, \'\') WHERE id = ?' . billing_data_scope_sql());
+            if (!$updateStmt) {
+                mysqli_rollback($conn);
+                http_response_code(500);
+                die('Gagal menyiapkan pembaruan total pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+            }
+            mysqli_stmt_bind_param($updateStmt, 'dsi', $newPaidAmount, $paymentMethod, $id);
+            if (!mysqli_stmt_execute($updateStmt) || !mysqli_commit($conn)) {
+                $error = mysqli_stmt_error($updateStmt) ?: mysqli_error($conn);
+                mysqli_stmt_close($updateStmt);
+                mysqli_rollback($conn);
+                http_response_code(500);
+                die('Gagal memperbarui total pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+            }
+            mysqli_stmt_close($updateStmt);
+            $message = 'Pembayaran berhasil dicatat.';
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_payment') {
     $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
@@ -58,21 +142,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
                 $idForConfirm = (int) $id;
                 $previousForConfirm = number_format($previousPaid, 0, ',', '.');
                 $newForConfirm = number_format($dibayar, 0, ',', '.');
-                echo '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Konfirmasi Pembayaran</title><link href="css/sb-admin-2.min.css" rel="stylesheet"></head><body class="bg-light"><div class="container py-5"><div class="card shadow mx-auto" style="max-width: 560px"><div class="card-header font-weight-bold text-warning">Konfirmasi perubahan pembayaran</div><div class="card-body"><p>Jumlah pembayaran akan berubah dari <strong>Rp ' . $previousForConfirm . '</strong> menjadi <strong>Rp ' . $newForConfirm . '</strong>.</p><p class="text-danger">Jika tersimpan sebagai Rp0, jumlah cicilan sebelumnya akan tertimpa. Pastikan nominal yang baru sudah benar.</p><form method="post" action="omset.php"><input type="hidden" name="action" value="update_payment"><input type="hidden" name="csrf_token" value="' . $csrfTokenForConfirm . '"><input type="hidden" name="id" value="' . $idForConfirm . '"><input type="hidden" name="dibayar" value="' . $dibayarForConfirm . '"><input type="hidden" name="metode_pembayaran" value="' . $metodeForConfirm . '"><input type="hidden" name="catatan" value="' . $catatanForConfirm . '"><input type="hidden" name="confirm_payment_update" value="yes"><button type="submit" class="btn btn-warning">Ya, ganti nominal</button> <a href="omset.php" class="btn btn-secondary">Batal</a></form></div></div></div></body></html>';
+                echo '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Konfirmasi Pembayaran</title><link href="css/sb-admin-2.min.css" rel="stylesheet"></head><body class="bg-light"><div class="container py-5"><div class="card shadow mx-auto" style="max-width: 560px"><div class="card-header font-weight-bold text-warning">Konfirmasi perubahan pembayaran</div><div class="card-body"><p>Jumlah pembayaran akan berubah dari <strong>Rp ' . $previousForConfirm . '</strong> menjadi <strong>Rp ' . $newForConfirm . '</strong>.</p><p class="text-danger">Perubahan nominal akan mengganti rincian pembayaran yang tercatat menjadi satu transaksi koreksi. Pastikan nominal dan metode yang baru sudah benar.</p><form method="post" action="omset.php"><input type="hidden" name="action" value="update_payment"><input type="hidden" name="csrf_token" value="' . $csrfTokenForConfirm . '"><input type="hidden" name="id" value="' . $idForConfirm . '"><input type="hidden" name="dibayar" value="' . $dibayarForConfirm . '"><input type="hidden" name="metode_pembayaran" value="' . $metodeForConfirm . '"><input type="hidden" name="catatan" value="' . $catatanForConfirm . '"><input type="hidden" name="confirm_payment_update" value="yes"><button type="submit" class="btn btn-warning">Ya, ganti nominal</button> <a href="omset.php" class="btn btn-secondary">Batal</a></form></div></div></div></body></html>';
                 exit;
             }
 
+            if (!mysqli_begin_transaction($conn)) {
+                http_response_code(500);
+                die('Gagal memulai pembaruan pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+            }
             $stmt = mysqli_prepare($conn, "UPDATE omset SET dibayar = ?, metode_pembayaran = NULLIF(?, ''), catatan = NULLIF(?, '') WHERE id = ?" . billing_data_scope_sql());
             if (!$stmt) {
+                mysqli_rollback($conn);
                 http_response_code(500);
                 die('Gagal menyiapkan pembaruan pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
             }
             mysqli_stmt_bind_param($stmt, 'dssi', $dibayar, $metodePembayaran, $catatan, $id);
             if (!mysqli_stmt_execute($stmt)) {
+                $error = mysqli_stmt_error($stmt);
+                mysqli_stmt_close($stmt);
+                mysqli_rollback($conn);
                 http_response_code(500);
-                die('Gagal menyimpan pembayaran: ' . htmlspecialchars(mysqli_stmt_error($stmt), ENT_QUOTES, 'UTF-8'));
+                die('Gagal menyimpan pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
             }
             mysqli_stmt_close($stmt);
+
+            if ($dibayar !== $previousPaid) {
+                $deletePaymentsStmt = mysqli_prepare($conn, 'DELETE p FROM omset_pembayaran p INNER JOIN omset o ON o.id = p.omset_id WHERE o.id = ?' . billing_data_scope_sql('o'));
+                if (!$deletePaymentsStmt) {
+                    mysqli_rollback($conn);
+                    http_response_code(500);
+                    die('Gagal menyiapkan sinkronisasi riwayat pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+                }
+                mysqli_stmt_bind_param($deletePaymentsStmt, 'i', $id);
+                if (!mysqli_stmt_execute($deletePaymentsStmt)) {
+                    $error = mysqli_stmt_error($deletePaymentsStmt);
+                    mysqli_stmt_close($deletePaymentsStmt);
+                    mysqli_rollback($conn);
+                    http_response_code(500);
+                    die('Gagal menyinkronkan riwayat pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+                }
+                mysqli_stmt_close($deletePaymentsStmt);
+
+                if ($dibayar > 0) {
+                    $replacePaymentStmt = mysqli_prepare($conn, "INSERT INTO omset_pembayaran (omset_id, nominal, metode_pembayaran, tanggal)
+                        VALUES (?, ?, NULLIF(?, ''), CURRENT_DATE())");
+                    if (!$replacePaymentStmt) {
+                        mysqli_rollback($conn);
+                        http_response_code(500);
+                        die('Gagal menyiapkan riwayat pembayaran baru: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+                    }
+                    mysqli_stmt_bind_param($replacePaymentStmt, 'ids', $id, $dibayar, $metodePembayaran);
+                    if (!mysqli_stmt_execute($replacePaymentStmt)) {
+                        $error = mysqli_stmt_error($replacePaymentStmt);
+                        mysqli_stmt_close($replacePaymentStmt);
+                        mysqli_rollback($conn);
+                        http_response_code(500);
+                        die('Gagal menyimpan riwayat pembayaran baru: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+                    }
+                    mysqli_stmt_close($replacePaymentStmt);
+                }
+            } else {
+                $updateLegacyMethodStmt = mysqli_prepare($conn, "UPDATE omset_pembayaran SET metode_pembayaran = NULLIF(?, '')
+                    WHERE omset_id = ? AND legacy_import = 1");
+                if (!$updateLegacyMethodStmt) {
+                    mysqli_rollback($conn);
+                    http_response_code(500);
+                    die('Gagal menyiapkan pembaruan metode pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+                }
+                mysqli_stmt_bind_param($updateLegacyMethodStmt, 'si', $metodePembayaran, $id);
+                if (!mysqli_stmt_execute($updateLegacyMethodStmt)) {
+                    $error = mysqli_stmt_error($updateLegacyMethodStmt);
+                    mysqli_stmt_close($updateLegacyMethodStmt);
+                    mysqli_rollback($conn);
+                    http_response_code(500);
+                    die('Gagal memperbarui metode pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+                }
+                mysqli_stmt_close($updateLegacyMethodStmt);
+            }
+            if (!mysqli_commit($conn)) {
+                mysqli_rollback($conn);
+                http_response_code(500);
+                die('Gagal menyelesaikan pembaruan pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+            }
             $message = 'Pembayaran berhasil diperbarui.';
         }
     }
@@ -90,6 +241,21 @@ if (!$totalResult) {
 }
 $totalOmset = mysqli_fetch_assoc($totalResult);
 $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total_dibayar'];
+
+$paymentHistoryResult = mysqli_query($conn, 'SELECT p.omset_id, p.nominal, p.metode_pembayaran, p.tanggal
+    FROM omset_pembayaran p
+    INNER JOIN omset o ON o.id = p.omset_id
+    WHERE 1=1' . billing_data_scope_sql('o') . '
+    ORDER BY p.tanggal DESC, p.id DESC');
+if (!$paymentHistoryResult) {
+    http_response_code(500);
+    die('Gagal mengambil rincian pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
+$paymentHistory = [];
+while ($paymentRow = mysqli_fetch_assoc($paymentHistoryResult)) {
+    $paymentHistory[(int) $paymentRow['omset_id']][] = $paymentRow;
+}
+mysqli_free_result($paymentHistoryResult);
 
 ?>
 
@@ -232,7 +398,7 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                             <?php if ($message !== ''): ?>
                                 <div class="alert alert-<?= $messageType; ?>" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php endif; ?>
-                            <p class="text-muted">Tambahkan tagihan secara manual melalui tombol Tambah Omset. Tagihan cicilan dan belum lunas tetap tersimpan setelah rekap.</p>
+                            <p class="text-muted">Tambahkan tagihan secara manual melalui tombol Tambah Omset. Untuk pembayaran dengan beberapa metode, catat tiap pembayaran satu per satu. Jika nominal total dikoreksi melalui tombol Simpan, rincian pembayaran akan diganti menjadi satu transaksi koreksi.</p>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <div class="card border-left-success shadow-sm h-100">
@@ -295,7 +461,18 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                             <td>Rp <?= number_format($jumlahDibayar, 0, ',', '.'); ?></td>
                                             <td><span class="badge badge-<?= $statusPembayaran === 'Lunas' ? 'success' : (in_array($statusPembayaran, ['Cicil', 'Nominal belum diisi'], true) ? 'warning' : 'danger'); ?>"><?= $statusPembayaran; ?></span></td>
                                             <td><?= htmlspecialchars($row["tanggal"] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?= htmlspecialchars($row['metode_pembayaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td>
+                                                <?php if (!empty($paymentHistory[(int) $row['id']])): ?>
+                                                    <?php foreach ($paymentHistory[(int) $row['id']] as $payment): ?>
+                                                        <div><?= htmlspecialchars($payment['metode_pembayaran'] ?: 'Metode belum diisi', ENT_QUOTES, 'UTF-8'); ?>:
+                                                            Rp <?= number_format((float) $payment['nominal'], 0, ',', '.'); ?>
+                                                            <small class="text-muted">(<?= htmlspecialchars($payment['tanggal'], ENT_QUOTES, 'UTF-8'); ?>)</small>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <?= htmlspecialchars($row['metode_pembayaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?= nl2br(htmlspecialchars($row['catatan'] ?? '', ENT_QUOTES, 'UTF-8')); ?></td>
                                             <td>
                                                 <?php if (billing_can('update')): ?><form method="post" action="omset.php" id="update-payment-<?= (int) $row['id']; ?>" class="mb-2">
@@ -306,6 +483,18 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                                                     <input type="text" name="metode_pembayaran" class="form-control form-control-sm mt-1" maxlength="100" list="metodePembayaranList" value="<?= htmlspecialchars($row['metode_pembayaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Metode pembayaran">
                                                     <textarea name="catatan" class="form-control form-control-sm mt-1" rows="2" placeholder="Catatan"><?= htmlspecialchars($row['catatan'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                                                 </form>
+                                                <?php if ($row['nominal'] !== null && $jumlahDibayar < $nominalTagihan): ?>
+                                                    <form method="post" action="omset.php" id="add-payment-<?= (int) $row['id']; ?>" class="mb-2">
+                                                        <input type="hidden" name="action" value="add_payment">
+                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <input type="hidden" name="id" value="<?= (int) $row['id']; ?>">
+                                                        <label class="small mb-1" for="payment-amount-<?= (int) $row['id']; ?>">Tambah pembayaran</label>
+                                                        <input type="number" id="payment-amount-<?= (int) $row['id']; ?>" name="nominal_pembayaran" class="form-control form-control-sm mb-1" min="0.01" max="<?= $nominalTagihan - $jumlahDibayar; ?>" step="0.01" placeholder="Nominal pembayaran" required>
+                                                        <input type="text" name="metode_pembayaran_baru" class="form-control form-control-sm mb-1" maxlength="100" list="metodePembayaranList" placeholder="Metode (mis. BRI)" required>
+                                                        <input type="date" name="tanggal_pembayaran" class="form-control form-control-sm mb-1" value="<?= date('Y-m-d'); ?>" required>
+                                                        <button type="submit" form="add-payment-<?= (int) $row['id']; ?>" class="btn btn-outline-success btn-sm">Catat</button>
+                                                    </form>
+                                                <?php endif; ?>
                                                 <?php endif; ?>
                                                 <div class="btn-group-vertical" role="group" aria-label="Aksi omset">
                                                     <?php if (!empty($_SESSION['is_superadmin']) && $row['owner_admin_id'] !== null): ?>
@@ -342,6 +531,7 @@ $sisaTagihan = (float) $totalOmset['total_nominal'] - (float) $totalOmset['total
                         <datalist id="metodePembayaranList">
                             <option value="Tunai">
                             <option value="Transfer Bank">
+                            <option value="BRI">
                             <option value="QRIS">
                             <option value="E-Wallet">
                             <option value="Flazz (PT Bank Central Asia Tbk / BCA)">

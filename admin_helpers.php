@@ -306,6 +306,116 @@ function billing_data_scope_sql($alias = '', $column = 'owner_admin_id')
     return ' AND ' . $qualifiedColumn . ' = ' . (int) $ownerId;
 }
 
+function billing_prepare_payment_records($connection)
+{
+    $tableSql = "CREATE TABLE IF NOT EXISTS omset_pembayaran (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        omset_id BIGINT UNSIGNED NOT NULL,
+        nominal DECIMAL(15,2) NOT NULL,
+        metode_pembayaran VARCHAR(100) NULL,
+        tanggal DATE NOT NULL,
+        legacy_import TINYINT(1) NULL DEFAULT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_omset_pembayaran_legacy (omset_id, legacy_import),
+        INDEX idx_omset_pembayaran_tanggal (tanggal),
+        INDEX idx_omset_pembayaran_omset (omset_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    if (!mysqli_query($connection, $tableSql)) {
+        http_response_code(500);
+        die('Gagal menyiapkan tabel pembayaran: ' . htmlspecialchars(mysqli_error($connection), ENT_QUOTES, 'UTF-8'));
+    }
+
+    $migrationKey = 'omset_payment_records_v1';
+    $migrationStmt = mysqli_prepare($connection, 'SELECT 1 FROM app_schema_migrations WHERE migration_key = ?');
+    if (!$migrationStmt) {
+        http_response_code(500);
+        die('Gagal memeriksa migrasi pembayaran: ' . htmlspecialchars(mysqli_error($connection), ENT_QUOTES, 'UTF-8'));
+    }
+    mysqli_stmt_bind_param($migrationStmt, 's', $migrationKey);
+    if (!mysqli_stmt_execute($migrationStmt)) {
+        $error = mysqli_stmt_error($migrationStmt);
+        mysqli_stmt_close($migrationStmt);
+        http_response_code(500);
+        die('Gagal memeriksa migrasi pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+    }
+    $migrationResult = mysqli_stmt_get_result($migrationStmt);
+    $migrationApplied = mysqli_fetch_assoc($migrationResult) !== null;
+    mysqli_stmt_close($migrationStmt);
+    if ($migrationApplied) {
+        return;
+    }
+
+    $lockResult = mysqli_query($connection, "SELECT GET_LOCK('billing_omset_payment_records_v1', 15) AS lock_acquired");
+    if (!$lockResult) {
+        http_response_code(500);
+        die('Gagal mengunci migrasi pembayaran: ' . htmlspecialchars(mysqli_error($connection), ENT_QUOTES, 'UTF-8'));
+    }
+    $lockRow = mysqli_fetch_assoc($lockResult);
+    mysqli_free_result($lockResult);
+    if ((int) ($lockRow['lock_acquired'] ?? 0) !== 1) {
+        http_response_code(503);
+        die('Migrasi pembayaran sedang berjalan. Silakan muat ulang halaman.');
+    }
+
+    $migrationStmt = mysqli_prepare($connection, 'SELECT 1 FROM app_schema_migrations WHERE migration_key = ?');
+    if (!$migrationStmt) {
+        http_response_code(500);
+        die('Gagal memeriksa migrasi pembayaran: ' . htmlspecialchars(mysqli_error($connection), ENT_QUOTES, 'UTF-8'));
+    }
+    mysqli_stmt_bind_param($migrationStmt, 's', $migrationKey);
+    if (!mysqli_stmt_execute($migrationStmt)) {
+        $error = mysqli_stmt_error($migrationStmt);
+        mysqli_stmt_close($migrationStmt);
+        http_response_code(500);
+        die('Gagal memeriksa migrasi pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+    }
+    $migrationResult = mysqli_stmt_get_result($migrationStmt);
+    $migrationApplied = mysqli_fetch_assoc($migrationResult) !== null;
+    mysqli_stmt_close($migrationStmt);
+
+    if (!$migrationApplied) {
+        $importSql = "INSERT INTO omset_pembayaran (omset_id, nominal, metode_pembayaran, tanggal, legacy_import)
+            SELECT o.id, o.dibayar, NULLIF(TRIM(o.metode_pembayaran), ''), COALESCE(o.tanggal, CURRENT_DATE()), 1
+            FROM omset o
+            WHERE o.dibayar > 0";
+        if (!mysqli_query($connection, $importSql)) {
+            $error = mysqli_error($connection);
+            mysqli_query($connection, "SELECT RELEASE_LOCK('billing_omset_payment_records_v1')");
+            http_response_code(500);
+            die('Gagal mengimpor pembayaran lama: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+        }
+
+        $markStmt = mysqli_prepare($connection, 'INSERT INTO app_schema_migrations (migration_key) VALUES (?)');
+        if (!$markStmt) {
+            $error = mysqli_error($connection);
+            mysqli_query($connection, "SELECT RELEASE_LOCK('billing_omset_payment_records_v1')");
+            http_response_code(500);
+            die('Gagal menyiapkan status migrasi pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+        }
+        mysqli_stmt_bind_param($markStmt, 's', $migrationKey);
+        if (!mysqli_stmt_execute($markStmt)) {
+            $error = mysqli_stmt_error($markStmt);
+            mysqli_stmt_close($markStmt);
+            mysqli_query($connection, "SELECT RELEASE_LOCK('billing_omset_payment_records_v1')");
+            http_response_code(500);
+            die('Gagal menyimpan status migrasi pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+        }
+        mysqli_stmt_close($markStmt);
+    }
+
+    $releaseResult = mysqli_query($connection, "SELECT RELEASE_LOCK('billing_omset_payment_records_v1') AS released");
+    if (!$releaseResult) {
+        http_response_code(500);
+        die('Gagal melepaskan kunci migrasi pembayaran: ' . htmlspecialchars(mysqli_error($connection), ENT_QUOTES, 'UTF-8'));
+    }
+    $releaseRow = mysqli_fetch_assoc($releaseResult);
+    mysqli_free_result($releaseResult);
+    if ((int) ($releaseRow['released'] ?? 0) !== 1) {
+        http_response_code(500);
+        die('Kunci migrasi pembayaran tidak dapat dilepaskan.');
+    }
+}
+
 function billing_log_activity($username, $activity, $page = null, $targetId = null, $adminUserId = null)
 {
     $connection = billing_db_connect();

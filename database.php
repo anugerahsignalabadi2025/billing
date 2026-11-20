@@ -102,12 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'archi
             $revenueArchiveStmt = mysqli_prepare($conn, "INSERT INTO arsip_bulanan (periode_arsip, jenis_data, data_id, pelanggan_id, periode_tagihan, nama, notlp, alamat, paket, nominal, dibayar, tanggal, owner_admin_id)
                 SELECT ?, 'omset', o.id, o.customer_id, o.periode, o.nama, o.notlp, o.alamat, o.paket, o.nominal, o.dibayar, o.tanggal, o.owner_admin_id
                 FROM omset o
-                WHERE o.nominal IS NOT NULL AND COALESCE(o.dibayar, 0) >= o.nominal
-                    AND NOT EXISTS (
-                        SELECT 1 FROM arsip_bulanan a
-                        WHERE a.jenis_data = 'omset' AND a.data_id = o.id
-                            AND a.nominal IS NOT NULL AND COALESCE(a.dibayar, 0) >= a.nominal
-                    )" . billing_data_scope_sql('o'));
+                WHERE o.nominal IS NOT NULL AND COALESCE(o.dibayar, 0) >= o.nominal" . billing_data_scope_sql('o'));
             if (!$revenueArchiveStmt) {
                 throw new RuntimeException('Gagal menyiapkan arsip omset.');
             }
@@ -135,15 +130,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'archi
                 mysqli_stmt_close($archiveStmt);
             }
 
-            $deletePaidStmt = mysqli_prepare($conn, 'DELETE FROM omset WHERE nominal IS NOT NULL AND COALESCE(dibayar, 0) >= nominal' . billing_data_scope_sql());
-            if (!$deletePaidStmt) {
-                throw new RuntimeException('Gagal menyiapkan pembersihan tagihan lunas.');
+            $resetPaidStmt = mysqli_prepare($conn, 'UPDATE omset SET dibayar = 0 WHERE nominal IS NOT NULL AND COALESCE(dibayar, 0) >= nominal' . billing_data_scope_sql());
+            if (!$resetPaidStmt) {
+                throw new RuntimeException('Gagal menyiapkan reset pembayaran tagihan lunas.');
             }
-            if (!mysqli_stmt_execute($deletePaidStmt)) {
-                throw new RuntimeException('Gagal menghapus tagihan lunas.');
+            if (!mysqli_stmt_execute($resetPaidStmt)) {
+                throw new RuntimeException('Gagal mereset pembayaran tagihan lunas.');
             }
-            $deletedPaid = mysqli_stmt_affected_rows($deletePaidStmt);
-            mysqli_stmt_close($deletePaidStmt);
+            $resetPaid = mysqli_stmt_affected_rows($resetPaidStmt);
+            mysqli_stmt_close($resetPaidStmt);
 
             $deletedExpenses = 0;
             foreach (['pengeluaran_tetap', 'pengeluaran_takterduga'] as $table) {
@@ -157,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'archi
                 throw new RuntimeException('Gagal menyelesaikan transaksi rekap.');
             }
             $selectedPeriod = $periodeArsipSekarang;
-            $message = "Rekap semua data selesai. $deletedPaid tagihan lunas dan $deletedExpenses data pengeluaran dipindahkan ke arsip; cicilan dan tagihan belum lunas tetap tersimpan di Omset.";
+            $message = "Rekap selesai. $resetPaid tagihan lunas disalin ke arsip dan pembayaran aktifnya direset menjadi Rp0 (belum lunas); cicilan dan tagihan belum lunas tetap tersimpan. $deletedExpenses data pengeluaran dipindahkan ke arsip.";
         } catch (Throwable $exception) {
             mysqli_rollback($conn);
             $message = $exception instanceof RuntimeException
@@ -319,8 +314,8 @@ $selectedPeriodLabel = $selectedPeriod === ''
                         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Rekap Semua Data</h6></div>
                         <div class="card-body">
                             <?php if (billing_can('update')): ?>
-                                <p>Rekap mengambil tagihan yang sudah lunas penuh dari semua periode dan tanggal, serta seluruh pengeluaran aktif. Cicilan dan tagihan belum lunas tidak masuk arsip dan tetap tersimpan di Omset.</p>
-                                <form method="post" onsubmit="return confirm('Rekap semua periode? Semua tagihan lunas penuh dan seluruh pengeluaran aktif akan dipindahkan ke arsip. Cicilan dan tagihan belum lunas tetap berada di Omset.');">
+                                <p>Rekap menyalin tagihan lunas penuh ke arsip lalu mereset pembayaran aktifnya menjadi Rp0 (belum lunas). Data tagihan tetap ada di Omset; cicilan dan tagihan belum lunas tidak berubah. Seluruh pengeluaran aktif juga dipindahkan ke arsip.</p>
+                                <form method="post" onsubmit="return confirm('Rekap semua periode? Tagihan lunas akan disalin ke arsip dan pembayaran aktifnya direset menjadi Rp0 (belum lunas), tanpa menghapus datanya. Cicilan dan tagihan belum lunas tetap tidak berubah. Seluruh pengeluaran aktif akan dipindahkan ke arsip.');">
                                     <input type="hidden" name="action" value="archive_all_paid">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                     <button type="submit" class="btn btn-danger"><i class="fas fa-archive"></i> Rekap Semua Data Lunas</button>

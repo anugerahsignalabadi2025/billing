@@ -135,7 +135,7 @@ Halaman **Database** menyalin data ke arsip saat periode ditutup. Sesuai alur ap
 
 - Data arsip tetap tersimpan sebagai riwayat.
 - Tagihan belum lunas atau cicilan tetap berada di Omset.
-- Tagihan yang sudah lunas dihapus dari Omset aktif setelah diarsipkan.
+- Tagihan yang sudah lunas tetap berada di Omset, tetapi pembayaran aktifnya direset menjadi Rp0 sehingga statusnya kembali belum lunas. Salinan pembayaran lunas tetap tersimpan di arsip.
 - Data pengeluaran aktif dikosongkan setelah disalin ke arsip.
 
 Periksa periode dan data arsip dengan teliti sebelum menutup periode. Buat backup database terlebih dahulu; jangan menghapus arsip jika masih diperlukan untuk pemulihan.

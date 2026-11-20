@@ -39,20 +39,58 @@ $copySql = [
 ];
 
 $conn = billing_db_connect();
+if ($entity === 'omset') {
+    billing_prepare_payment_records($conn);
+}
 $stmt = mysqli_prepare($conn, $copySql[$entity]);
 if (!$stmt) {
     http_response_code(500);
     die('Gagal menyiapkan salinan data: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
 }
 mysqli_stmt_bind_param($stmt, 'ii', $id, $sourceOwnerId);
+if ($entity === 'omset' && !mysqli_begin_transaction($conn)) {
+    mysqli_stmt_close($stmt);
+    http_response_code(500);
+    die('Gagal memulai penyalinan data omset: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
 if (!mysqli_stmt_execute($stmt)) {
     $error = mysqli_stmt_error($stmt);
     mysqli_stmt_close($stmt);
+    if ($entity === 'omset') {
+        mysqli_rollback($conn);
+    }
     http_response_code(500);
     die('Gagal menyalin data: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
 }
 $copied = mysqli_stmt_affected_rows($stmt);
+$copiedOmsetId = $entity === 'omset' ? mysqli_stmt_insert_id($stmt) : 0;
 mysqli_stmt_close($stmt);
+if ($entity === 'omset' && $copied === 1) {
+    $paymentCopyStmt = mysqli_prepare($conn, 'INSERT INTO omset_pembayaran (omset_id, nominal, metode_pembayaran, tanggal)
+        SELECT ?, nominal, metode_pembayaran, tanggal FROM omset_pembayaran WHERE omset_id = ?');
+    if (!$paymentCopyStmt) {
+        $error = mysqli_error($conn);
+        mysqli_rollback($conn);
+        http_response_code(500);
+        die('Gagal menyiapkan salinan rincian pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+    }
+    mysqli_stmt_bind_param($paymentCopyStmt, 'ii', $copiedOmsetId, $id);
+    if (!mysqli_stmt_execute($paymentCopyStmt)) {
+        $error = mysqli_stmt_error($paymentCopyStmt);
+        mysqli_stmt_close($paymentCopyStmt);
+        mysqli_rollback($conn);
+        http_response_code(500);
+        die('Gagal menyalin rincian pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+    }
+    mysqli_stmt_close($paymentCopyStmt);
+    if (!mysqli_commit($conn)) {
+        mysqli_rollback($conn);
+        http_response_code(500);
+        die('Gagal menyelesaikan penyalinan data omset: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+    }
+} elseif ($entity === 'omset') {
+    mysqli_rollback($conn);
+}
 mysqli_close($conn);
 
 if ($copied !== 1) {

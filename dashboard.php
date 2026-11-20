@@ -54,6 +54,65 @@ if (!$conn) {
     die('Koneksi database gagal: ' . htmlspecialchars(mysqli_connect_error(), ENT_QUOTES, 'UTF-8'));
 }
 
+billing_prepare_payment_records($conn);
+
+$selectedPaymentPeriod = $_GET['periode_pembayaran'] ?? '';
+if (!is_string($selectedPaymentPeriod) || ($selectedPaymentPeriod !== '' && !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $selectedPaymentPeriod))) {
+    http_response_code(400);
+    die('Periode pembayaran tidak valid.');
+}
+
+$paymentPeriodsResult = mysqli_query($conn, 'SELECT DISTINCT DATE_FORMAT(p.tanggal, "%Y-%m") AS periode
+    FROM omset_pembayaran p
+    INNER JOIN omset o ON o.id = p.omset_id
+    WHERE 1=1' . billing_data_scope_sql('o') . '
+    ORDER BY periode DESC');
+if (!$paymentPeriodsResult) {
+    http_response_code(500);
+    die('Gagal mengambil daftar periode pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
+$paymentPeriods = [];
+while ($periodRow = mysqli_fetch_assoc($paymentPeriodsResult)) {
+    $paymentPeriods[] = $periodRow['periode'];
+}
+mysqli_free_result($paymentPeriodsResult);
+
+$paymentAnalysisSql = 'SELECT COALESCE(NULLIF(TRIM(p.metode_pembayaran), \'\'), \'Metode belum diisi\') AS metode,
+    SUM(p.nominal) AS total, COUNT(*) AS jumlah
+    FROM omset_pembayaran p
+    INNER JOIN omset o ON o.id = p.omset_id
+    WHERE 1=1' . billing_data_scope_sql('o');
+if ($selectedPaymentPeriod !== '') {
+    $paymentAnalysisSql .= ' AND p.tanggal >= ? AND p.tanggal < ?';
+}
+$paymentAnalysisSql .= ' GROUP BY COALESCE(NULLIF(TRIM(p.metode_pembayaran), \'\'), \'Metode belum diisi\') ORDER BY total DESC';
+$paymentAnalysisStmt = mysqli_prepare($conn, $paymentAnalysisSql);
+if (!$paymentAnalysisStmt) {
+    http_response_code(500);
+    die('Gagal menyiapkan analisis pembayaran: ' . htmlspecialchars(mysqli_error($conn), ENT_QUOTES, 'UTF-8'));
+}
+if ($selectedPaymentPeriod !== '') {
+    $periodStart = $selectedPaymentPeriod . '-01';
+    $periodEnd = date('Y-m-d', strtotime('+1 month', strtotime($periodStart)));
+    mysqli_stmt_bind_param($paymentAnalysisStmt, 'ss', $periodStart, $periodEnd);
+}
+if (!mysqli_stmt_execute($paymentAnalysisStmt)) {
+    $error = mysqli_stmt_error($paymentAnalysisStmt);
+    mysqli_stmt_close($paymentAnalysisStmt);
+    http_response_code(500);
+    die('Gagal mengambil analisis pembayaran: ' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+}
+$paymentAnalysisResult = mysqli_stmt_get_result($paymentAnalysisStmt);
+$paymentAnalysis = [];
+$paymentAnalysisTotal = 0.0;
+while ($paymentRow = mysqli_fetch_assoc($paymentAnalysisResult)) {
+    $paymentRow['total'] = (float) $paymentRow['total'];
+    $paymentRow['jumlah'] = (int) $paymentRow['jumlah'];
+    $paymentAnalysis[] = $paymentRow;
+    $paymentAnalysisTotal += $paymentRow['total'];
+}
+mysqli_stmt_close($paymentAnalysisStmt);
+
 $queries = [
     'total_pelanggan' => 'SELECT COUNT(*) AS total FROM datapelangganasa WHERE 1=1' . billing_data_scope_sql(),
     'total_tagihan' => 'SELECT COALESCE(SUM(nominal), 0) AS total FROM omset WHERE 1=1' . billing_data_scope_sql(),
@@ -243,6 +302,62 @@ $sisa_tagihan = $totals['total_tagihan'] - $totals['total_dibayar'];
                                     <a href="pengeluaran_takterduga.php" class="btn btn-warning btn-sm mb-2">Pengeluaran Takterduga</a>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+                            <h6 class="m-0 font-weight-bold text-primary">Analisis Pembayaran per Metode</h6>
+                            <form method="get" class="form-inline mt-2 mt-md-0">
+                                <label for="periode_pembayaran" class="mr-2">Periode:</label>
+                                <select name="periode_pembayaran" id="periode_pembayaran" class="form-control form-control-sm mr-2">
+                                    <option value="">Semua periode</option>
+                                    <?php foreach ($paymentPeriods as $period): ?>
+                                        <option value="<?= htmlspecialchars($period, ENT_QUOTES, 'UTF-8'); ?>" <?= $selectedPaymentPeriod === $period ? 'selected' : ''; ?>>
+                                            <?= htmlspecialchars(substr($period, 5, 2) . '/' . substr($period, 0, 4), ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="submit" class="btn btn-primary btn-sm">Tampilkan</button>
+                            </form>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">Persentase dihitung dari total pembayaran yang tercatat pada periode terpilih.</p>
+                            <?php if (!$paymentAnalysis): ?>
+                                <div class="text-muted">Belum ada pembayaran pada periode ini.</div>
+                            <?php else: ?>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Metode Pembayaran</th>
+                                                <th>Total Dibayar</th>
+                                                <th>Persentase</th>
+                                                <th>Jumlah Transaksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($paymentAnalysis as $payment): ?>
+                                                <?php $paymentPercentage = $paymentAnalysisTotal > 0 ? ($payment['total'] / $paymentAnalysisTotal) * 100 : 0; ?>
+                                                <tr>
+                                                    <td><?= htmlspecialchars($payment['metode'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td>Rp <?= number_format($payment['total'], 0, ',', '.'); ?></td>
+                                                    <td><?= number_format($paymentPercentage, 1, ',', '.'); ?>%</td>
+                                                    <td><?= number_format($payment['jumlah'], 0, ',', '.'); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="font-weight-bold">
+                                                <td>Total</td>
+                                                <td>Rp <?= number_format($paymentAnalysisTotal, 0, ',', '.'); ?></td>
+                                                <td><?= $paymentAnalysisTotal > 0 ? '100%' : '0%'; ?></td>
+                                                <td><?= number_format(array_sum(array_column($paymentAnalysis, 'jumlah')), 0, ',', '.'); ?></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
