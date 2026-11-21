@@ -53,6 +53,7 @@ if (isset($_POST["submit"])) {
     <link href="vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="css/form-inputs.css" rel="stylesheet">
 </head>
 
 <body id="page-top">
@@ -143,11 +144,14 @@ if (isset($_POST["submit"])) {
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>
-                                    <input type="number" class="form-control" name="nominal" id="nominal" value="<?= htmlspecialchars((string) ($data['nominal'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <div class="input-group currency-input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text">Rp</span></div>
+                                        <input type="text" class="form-control" name="nominal" id="nominal" inputmode="decimal" data-money-input value="<?= htmlspecialchars((string) ($data['nominal'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="tanggal">Tanggal</label>
-                                    <input type="date" class="form-control" name="tanggal" id="tanggal" value="<?= htmlspecialchars($data['tanggal'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <input type="date" class="form-control date-picker-input" name="tanggal" id="tanggal" value="<?= htmlspecialchars($data['tanggal'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <button type="submit" name="submit" class="btn btn-primary">Update</button>
                                 <a href="pengeluaran_takterduga.php" class="btn btn-secondary">Batal</a>
@@ -172,6 +176,7 @@ if (isset($_POST["submit"])) {
     <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="js/sb-admin-2.min.js"></script>
+    <script src="js/form-inputs.js"></script>
 </body>
 
 </html>

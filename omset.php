@@ -276,6 +276,7 @@ mysqli_free_result($paymentHistoryResult);
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
     <link href="css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="css/form-inputs.css" rel="stylesheet">
     <link href="vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
 
 </head>
@@ -394,11 +395,10 @@ mysqli_free_result($paymentHistoryResult);
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="alert alert-warning" role="alert">Pembuatan tagihan bulanan otomatis dinonaktifkan. Tagihan baru harus ditambahkan manual, dan tagihan yang dihapus tidak akan dibuat ulang.</div>
+                            <!-- <div class="alert alert-warning" role="alert">Pembuatan tagihan bulanan otomatis dinonaktifkan. Tagihan baru harus ditambahkan manual, dan tagihan yang dihapus tidak akan dibuat ulang.</div> -->
                             <?php if ($message !== ''): ?>
                                 <div class="alert alert-<?= $messageType; ?>" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php endif; ?>
-                            <p class="text-muted">Tambahkan tagihan secara manual melalui tombol Tambah Omset. Untuk pembayaran dengan beberapa metode, catat tiap pembayaran satu per satu. Jika nominal total dikoreksi melalui tombol Simpan, rincian pembayaran akan diganti menjadi satu transaksi koreksi.</p>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <div class="card border-left-success shadow-sm h-100">
@@ -479,7 +479,10 @@ mysqli_free_result($paymentHistoryResult);
                                                     <input type="hidden" name="action" value="update_payment">
                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                     <input type="hidden" name="id" value="<?= (int) $row['id']; ?>">
-                                                    <input type="number" name="dibayar" class="form-control form-control-sm" min="0" max="<?= $nominalTagihan; ?>" step="0.01" value="<?= $jumlahDibayar; ?>" aria-label="Jumlah yang sudah dibayar">
+                                                    <div class="input-group input-group-sm currency-input-group">
+                                                        <div class="input-group-prepend"><span class="input-group-text">Rp</span></div>
+                                                        <input type="text" name="dibayar" class="form-control" inputmode="decimal" data-money-input value="<?= $jumlahDibayar; ?>" aria-label="Jumlah yang sudah dibayar">
+                                                    </div>
                                                     <input type="text" name="metode_pembayaran" class="form-control form-control-sm mt-1" maxlength="100" list="metodePembayaranList" value="<?= htmlspecialchars($row['metode_pembayaran'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Metode pembayaran">
                                                     <textarea name="catatan" class="form-control form-control-sm mt-1" rows="2" placeholder="Catatan"><?= htmlspecialchars($row['catatan'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
                                                 </form>
@@ -489,9 +492,12 @@ mysqli_free_result($paymentHistoryResult);
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                         <input type="hidden" name="id" value="<?= (int) $row['id']; ?>">
                                                         <label class="small mb-1" for="payment-amount-<?= (int) $row['id']; ?>">Tambah pembayaran</label>
-                                                        <input type="number" id="payment-amount-<?= (int) $row['id']; ?>" name="nominal_pembayaran" class="form-control form-control-sm mb-1" min="0.01" max="<?= $nominalTagihan - $jumlahDibayar; ?>" step="0.01" placeholder="Nominal pembayaran" required>
+                                                        <div class="input-group input-group-sm currency-input-group mb-1">
+                                                            <div class="input-group-prepend"><span class="input-group-text">Rp</span></div>
+                                                            <input type="text" id="payment-amount-<?= (int) $row['id']; ?>" name="nominal_pembayaran" class="form-control" inputmode="decimal" data-money-input placeholder="Nominal pembayaran" required>
+                                                        </div>
                                                         <input type="text" name="metode_pembayaran_baru" class="form-control form-control-sm mb-1" maxlength="100" list="metodePembayaranList" placeholder="Metode (mis. BRI)" required>
-                                                        <input type="date" name="tanggal_pembayaran" class="form-control form-control-sm mb-1" value="<?= date('Y-m-d'); ?>" required>
+                                                        <input type="date" name="tanggal_pembayaran" class="form-control form-control-sm date-picker-input mb-1" value="<?= date('Y-m-d'); ?>" required>
                                                         <button type="submit" form="add-payment-<?= (int) $row['id']; ?>" class="btn btn-outline-success btn-sm">Catat</button>
                                                     </form>
                                                 <?php endif; ?>
@@ -529,33 +535,14 @@ mysqli_free_result($paymentHistoryResult);
                             </div>
                         </div>
                         <datalist id="metodePembayaranList">
-                            <option value="Tunai">
-                            <option value="Transfer Bank">
+                            <option value="CASH">
+                            <option value="DANA">
+                            <option value="GOPAY">
+                            <option value="OVO">
+                            <option value="BSI">
                             <option value="BRI">
                             <option value="QRIS">
-                            <option value="E-Wallet">
-                            <option value="Flazz (PT Bank Central Asia Tbk / BCA)">
-                            <option value="Mandiri e-Money (PT Bank Mandiri (Persero) Tbk)">
-                            <option value="BRIZZI (PT Bank Rakyat Indonesia (Persero) Tbk)">
-                            <option value="TapCash (PT Bank Negara Indonesia (Persero) Tbk)">
-                            <option value="JakCard (PT Bank DKI)">
-                            <option value="Simas E-money (PT Bank Sinarmas)">
-                            <option value="CommuterPay (PT Kereta Commuter Indonesia)">
-                            <option value="GoPay (PT Dompet Anak Bangsa)">
-                            <option value="OVO / OVO Cash (PT Visionet Internasional)">
-                            <option value="DANA (PT Espay Debit Indonesia Koe)">
-                            <option value="ShopeePay (PT Airpay International Indonesia)">
-                            <option value="LinkAja (PT Fintek Karya Nusantara)">
-                            <option value="Sakuku (PT Bank Central Asia Tbk)">
-                            <option value="iSaku (PT Inti Dunia Sukses)">
-                            <option value="KasPro (PT Solusi Pasti Indonesia)">
-                            <option value="DOKU / DOKU Wallet (PT Nusa Satu Inti Artha)">
-                            <option value="Speed Cash (PT Bimasakti Multi Sinergi)">
-                            <option value="OttoCash (PT Transaksi Artha Gemilang)">
-                            <option value="Bluepay (PT Bluepay Digital Internasional)">
-                            <option value="Ezeelink (PT Ezeelink Indonesia)">
-                            <option value="M-Bayar (PT E2Pay Global Utama)">
-                            <option value="DUWIT (PT Cakra Ultima Sejahtera)">
+                            <option value="MIFTAH">
                         </datalist>
                     </div>
 
@@ -604,6 +591,7 @@ mysqli_free_result($paymentHistoryResult);
     <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
 
     <script src="js/sb-admin-2.min.js"></script>
+    <script src="js/form-inputs.js"></script>
 
     <script src="vendor/datatables/jquery.dataTables.min.js"></script>
     <script src="vendor/datatables/dataTables.bootstrap4.min.js"></script>

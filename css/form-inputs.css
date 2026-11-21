@@ -1,0 +1,13 @@
+.currency-input-group .input-group-text {
+    min-width: 3.25rem;
+    justify-content: center;
+}
+
+input[type="date"].date-picker-input {
+    min-height: 2.75rem;
+    cursor: pointer;
+}
+
+input[type="date"].date-picker-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+}

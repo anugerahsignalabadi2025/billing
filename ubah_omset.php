@@ -71,6 +71,7 @@ $catatan = isset($_POST['catatan']) && is_string($_POST['catatan'])
     <link href="vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="css/form-inputs.css" rel="stylesheet">
 </head>
 
 <body id="page-top">
@@ -164,42 +165,27 @@ $catatan = isset($_POST['catatan']) && is_string($_POST['catatan'])
                                 </div>
                                 <div class="form-group">
                                     <label for="nominal">Nominal (Rp)</label>
-                                    <input type="number" class="form-control" name="nominal" id="nominal" value="<?= htmlspecialchars((string) ($data['nominal'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <div class="input-group currency-input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text">Rp</span></div>
+                                        <input type="text" class="form-control" name="nominal" id="nominal" inputmode="decimal" data-money-input value="<?= htmlspecialchars((string) ($data['nominal'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="tanggal">Tanggal</label>
-                                    <input type="date" class="form-control" name="tanggal" id="tanggal" value="<?= htmlspecialchars($data['tanggal'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <input type="date" class="form-control date-picker-input" name="tanggal" id="tanggal" value="<?= htmlspecialchars($data['tanggal'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label for="metode_pembayaran">Metode Pembayaran</label>
-                                    <input type="text" class="form-control" name="metode_pembayaran" id="metode_pembayaran" maxlength="100" list="metodePembayaranList" value="<?= htmlspecialchars((string) $metodePembayaran, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Tunai, Transfer Bank, QRIS">
+                                    <input type="text" class="form-control" name="metode_pembayaran" id="metode_pembayaran" maxlength="100" list="metodePembayaranList" value="<?= htmlspecialchars((string) $metodePembayaran, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Pilih atau ketik metode pembayaran">
                                     <datalist id="metodePembayaranList">
-                                        <option value="Tunai">
-                                        <option value="Transfer Bank">
+                                        <option value="CASH">
+                                        <option value="DANA">
+                                        <option value="GOPAY">
+                                        <option value="OVO">
+                                        <option value="BSI">
+                                        <option value="BRI">
                                         <option value="QRIS">
-                                        <option value="E-Wallet">
-                                        <option value="Flazz (PT Bank Central Asia Tbk / BCA)">
-                                        <option value="Mandiri e-Money (PT Bank Mandiri (Persero) Tbk)">
-                                        <option value="BRIZZI (PT Bank Rakyat Indonesia (Persero) Tbk)">
-                                        <option value="TapCash (PT Bank Negara Indonesia (Persero) Tbk)">
-                                        <option value="JakCard (PT Bank DKI)">
-                                        <option value="Simas E-money (PT Bank Sinarmas)">
-                                        <option value="CommuterPay (PT Kereta Commuter Indonesia)">
-                                        <option value="GoPay (PT Dompet Anak Bangsa)">
-                                        <option value="OVO / OVO Cash (PT Visionet Internasional)">
-                                        <option value="DANA (PT Espay Debit Indonesia Koe)">
-                                        <option value="ShopeePay (PT Airpay International Indonesia)">
-                                        <option value="LinkAja (PT Fintek Karya Nusantara)">
-                                        <option value="Sakuku (PT Bank Central Asia Tbk)">
-                                        <option value="iSaku (PT Inti Dunia Sukses)">
-                                        <option value="KasPro (PT Solusi Pasti Indonesia)">
-                                        <option value="DOKU / DOKU Wallet (PT Nusa Satu Inti Artha)">
-                                        <option value="Speed Cash (PT Bimasakti Multi Sinergi)">
-                                        <option value="OttoCash (PT Transaksi Artha Gemilang)">
-                                        <option value="Bluepay (PT Bluepay Digital Internasional)">
-                                        <option value="Ezeelink (PT Ezeelink Indonesia)">
-                                        <option value="M-Bayar (PT E2Pay Global Utama)">
-                                        <option value="DUWIT (PT Cakra Ultima Sejahtera)">
+                                        <option value="MIFTAH">
                                     </datalist>
                                 </div>
                                 <div class="form-group">
@@ -229,6 +215,7 @@ $catatan = isset($_POST['catatan']) && is_string($_POST['catatan'])
     <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
     <script src="js/sb-admin-2.min.js"></script>
+    <script src="js/form-inputs.js"></script>
 </body>
 
 </html>
